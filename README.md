@@ -35,6 +35,7 @@ src/
     admin/               AdminApp, LoginScreen, TripsList, Editor, DaysTab, SettingsTab
   data/seedTrips.ts      Demo trips (used only by the optional seed script)
 scripts/seed.ts          Optional one-off Firestore seeder (npm run seed)
+public/icons/            PWA icons (192/512 + maskable + apple-touch)
 firebase.json            Hosting (security headers + SPA rewrite) + Firestore config
 firestore.rules          Functional, secure default rules
 ```
@@ -142,6 +143,25 @@ SEED_EMAIL=you@example.com SEED_PASSWORD=your-password npm run seed
 ```
 
 They are created owned by that account, so the Firestore rules permit them.
+
+## Installable (PWA)
+
+The app is a Progressive Web App, so it can be **installed to a phone's home screen** and
+launches full-screen like a native app.
+
+- **Manifest** (`vite-plugin-pwa`) — name, theme/background colours, `display: standalone`,
+  and `any` + `maskable` icons (192/512). Plus an `apple-touch-icon` and iOS meta tags.
+- **Service worker** (Workbox, `generateSW`) — precaches the app shell for fast repeat loads
+  and basic offline support; Google Fonts are runtime-cached. It auto-updates in the
+  background and is registered CSP-safely from `src/main.tsx` (no inline script).
+
+**Installing:**
+- **Android / Chrome:** open the deployed site → menu → *Install app* / *Add to Home screen*.
+- **iOS / Safari:** open the site → Share → *Add to Home Screen*.
+
+> Installability requires HTTPS, so test it on the deployed Firebase Hosting URL (service
+> workers also work on `http://localhost` for local checks). Icons live in `public/icons/`;
+> regenerate them from the SVG sources if you rebrand.
 
 ## Security headers
 
