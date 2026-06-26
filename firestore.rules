@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Trips. One document per trip, owned by the admin who created it.
+    match /trips/{tripId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == resource.data.ownerId;
+      }
+      function creatingAsSelf() {
+        return request.auth != null
+          && request.resource.data.ownerId == request.auth.uid;
+      }
+
+      // Anyone may read a published trip (public link or private + access code,
+      // which is gated client-side). Owners can always read their own drafts.
+      allow read: if resource.data.published == true || isOwner();
+
+      // A signed-in user may create a trip only as themselves.
+      allow create: if creatingAsSelf();
+
+      // Only the owner may modify or remove a trip, and may not reassign ownership.
+      allow update: if isOwner() && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner();
+    }
+
+    // Everything else is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

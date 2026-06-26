@@ -1,0 +1,51 @@
+:root {
+  /* ── Surfaces ── */
+  --color-backdrop-from: #f3ede2;
+  --color-backdrop-mid: #e5ddcf;
+  --color-backdrop-to: #dcd3c2;
+  --color-app-bg: #fbf8f3;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f6f1e9;
+
+  /* ── Ink ── */
+  --color-ink: #1f1b16;
+  --color-ink-soft: #443e36;
+  --color-muted: #8a8175;
+  --color-faint: #a89f92;
+  --color-fainter: #b0a693;
+
+  /* ── Brand & categories ── */
+  --color-accent: #c2541f;
+  --color-accent-soft: #f6e7dc;
+  --color-accent-amber: #fbefe0;
+  --color-attraction: #c2541f;
+  --color-meal: #2f7d5b;
+  --color-stay: #3b5b8c;
+  --color-transport: #7a5aa6;
+  --color-flight: #1e6fa8;
+
+  /* ── Lines & states ── */
+  --color-border: #efe8dd;
+  --color-border-strong: #e2dacc;
+  --color-danger: #c0392b;
+
+  /* ── Radii ── */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* ── Shadows ── */
+  --shadow-card: 0 6px 18px rgba(80, 55, 25, 0.05);
+  --shadow-soft: 0 4px 14px rgba(80, 55, 25, 0.05);
+  --shadow-accent: 0 10px 24px rgba(194, 84, 31, 0.3);
+
+  /* ── Motion ── */
+  --ease-out-back: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.28s;
+
+  /* ── Type ── */
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
