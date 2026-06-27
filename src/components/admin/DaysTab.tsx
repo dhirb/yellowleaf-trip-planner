@@ -1,15 +1,27 @@
 import type { Trip } from "../../types";
 import { bigDate } from "../../lib/date";
 import { imgFor } from "../../lib/dayView";
+import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
-import { CloseIcon, PlusIcon, SparkleIcon } from "../../lib/icons";
+import {
+  BedDouble,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useSwipe } from "../../hooks/useSwipe";
 import { DayStrip } from "../traveler/DayStrip";
+import { AddRow } from "../ui/AddRow";
+import { ReorderControls } from "../ui/ReorderControls";
 import {
   addFlight,
   addItem,
   delFlight,
   delItem,
+  moveFlight,
+  moveItem,
   setDayField,
   setItemContent,
   updateFlight,
@@ -26,81 +38,125 @@ interface DaysTabProps {
   update: (updater: (t: Trip) => Trip) => void;
   onAskAI: (di: number, ii: number) => void;
   aiBusyKey: string;
+  hasLanguages: boolean;
+  translateBusyKey: string;
+  onTranslateItem: (di: number, ii: number) => void;
+  onTranslateStay: (di: number) => void;
+  onTranslateDay: (di: number) => void;
 }
 
-const fieldInput = {
-  height: 40,
-  borderRadius: 10,
-  border: "1px solid #E7DFD2",
-  padding: "0 10px",
-  fontSize: 14,
-  color: "#1F1B16",
-  boxSizing: "border-box",
-  outline: "none",
-  background: "#fff",
-  fontFamily: "inherit",
-} as const;
+const fieldInput =
+  "h-11 rounded-sm border border-[#e7dfd2] bg-surface px-[10px] py-0 text-[14px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15";
 
-const flightInput = { ...fieldInput, border: "1px solid #CBDDEC" } as const;
+const flightInput = cn(fieldInput, "border-[#cbddec]");
 
-const NavBtn = ({ dir, onClick }: { dir: "left" | "right"; onClick: () => void }) => (
+const NavBtn = ({
+  dir,
+  onClick,
+}: {
+  dir: "left" | "right";
+  onClick: () => void;
+}) => (
   <button
     onClick={onClick}
     aria-label={dir === "left" ? "Previous day" : "Next day"}
-    style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid #ECE4D8", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
+    className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[13px] border border-[#ece4d8] bg-surface"
   >
-    <svg width="10" height="16" viewBox="0 0 12 20" fill="none">
-      <path d={dir === "left" ? "M10 2L2 10l8 8" : "M2 2l8 8-8 8"} stroke="#7A6F60" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    {dir === "left" ? (
+      <ChevronLeft size={20} color="#7A6F60" strokeWidth={2.6} />
+    ) : (
+      <ChevronRight size={20} color="#7A6F60" strokeWidth={2.6} />
+    )}
   </button>
 );
 
-const SectionLabel = ({ children, color = "#A89F92" }: { children: string; color?: string }) => (
-  <div style={{ fontSize: 11.5, fontWeight: 800, color, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 8 }}>
+const SectionLabel = ({
+  children,
+  color = "#A89F92",
+}: {
+  children: string;
+  color?: string;
+}) => (
+  <div
+    className="mb-2 text-[11.5px] font-extrabold uppercase tracking-[0.4px]"
+    style={{ color }}
+  >
     {children}
   </div>
 );
 
-const DeleteBtn = ({ onClick }: { onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    aria-label="Delete"
-    style={{ width: 36, height: 36, borderRadius: 10, background: "#FBEEEC", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, border: "none" }}
-  >
-    <CloseIcon size={16} />
-  </button>
+interface ReorderProps {
+  canUp: boolean;
+  canDown: boolean;
+  onUp: () => void;
+  onDown: () => void;
+}
+
+/** Shared card footer: horizontal reorder controls on the left, labeled delete on the right. */
+const ActionBar = ({
+  reorder,
+  onDelete,
+}: {
+  reorder: ReorderProps;
+  onDelete: () => void;
+}) => (
+  <div className="mt-[10px] flex items-center justify-between border-t border-[#efe7da] pt-[10px]">
+    <ReorderControls {...reorder} />
+    <button
+      type="button"
+      onClick={onDelete}
+      aria-label="Delete"
+      className="flex h-10 shrink-0 cursor-pointer items-center gap-[6px] rounded-[11px] bg-[#fbeeec] px-[14px] text-[13.5px] font-bold text-[#b4453a] transition touch-manipulation hover:bg-[#f7e2df] active:scale-95"
+    >
+      <Trash2 size={16} />
+      Delete
+    </button>
+  </div>
 );
 
-const AddRow = ({ label, color, onClick }: { label: string; color: string; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, height: 46, width: "100%", borderRadius: 14, border: `1.5px dashed ${color}55`, color, fontSize: 14.5, fontWeight: 700, cursor: "pointer", background: "none", fontFamily: "inherit" }}
-  >
-    <PlusIcon size={18} color={color} />
-    {label}
-  </button>
-);
-
-export function DaysTab({ trip, dayIndex, onSelectDay, onPrevDay, onNextDay, update, onAskAI, aiBusyKey }: DaysTabProps) {
+export function DaysTab({
+  trip,
+  dayIndex,
+  onSelectDay,
+  onPrevDay,
+  onNextDay,
+  update,
+  onAskAI,
+  aiBusyKey,
+  hasLanguages,
+  translateBusyKey,
+  onTranslateItem,
+  onTranslateStay,
+  onTranslateDay,
+}: DaysTabProps) {
   const di = Math.max(0, Math.min(dayIndex, trip.days.length - 1));
   const day = trip.days[di];
   const swipe = useSwipe(onPrevDay, onNextDay);
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+      <div className="mb-3 flex items-center gap-[10px]">
         <NavBtn dir="left" onClick={onPrevDay} />
-        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
-          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.3px" }}>{bigDate(day.date)}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#8A8175" }}>
+        <div className="min-w-0 flex-1 text-center">
+          <div className="text-[19px] font-extrabold tracking-[-0.3px]">
+            {bigDate(day.date)}
+          </div>
+          <div className="text-[13px] font-semibold text-muted">
             Day {di + 1} of {trip.days.length}
           </div>
         </div>
         <NavBtn dir="right" onClick={onNextDay} />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <DayStrip days={trip.days} current={di} today="" onSelect={onSelectDay} size={48} markToday={false} />
+      <div className="mb-4">
+        <DayStrip
+          days={trip.days}
+          current={di}
+          today=""
+          onSelect={onSelectDay}
+          size={48}
+          markToday={false}
+        />
       </div>
 
       <div
@@ -108,36 +164,106 @@ export function DaysTab({ trip, dayIndex, onSelectDay, onPrevDay, onNextDay, upd
         onPointerMove={swipe.onPointerMove}
         onPointerUp={swipe.onPointerUp}
         onPointerLeave={swipe.onPointerUp}
-        style={{ touchAction: "pan-y" }}
+        className="touch-pan-y"
       >
-        <div style={{ transform: `translateX(${swipe.dragX}px)`, transition: swipe.dragging ? "none" : "transform .28s cubic-bezier(.22,.61,.36,1)" }}>
+        <div
+          style={{
+            transform: `translateX(${swipe.dragX}px)`,
+            transition: swipe.dragging
+              ? "none"
+              : "transform .28s cubic-bezier(.22,.61,.36,1)",
+          }}
+        >
           {/* Day title */}
-          <div style={{ marginBottom: 14 }}>
+          <div className="mb-[14px]">
             <SectionLabel>Day title</SectionLabel>
             <input
               value={day.theme}
-              onChange={(e) => update((t) => setDayField(t, di, "theme", e.target.value))}
-              style={{ ...ui.input, height: 48, fontWeight: 700, color: "#C2541F" }}
+              onChange={(e) =>
+                update((t) => setDayField(t, di, "theme", e.target.value))
+              }
+              className={cn(ui.input, "h-12 font-bold text-accent")}
             />
+            {hasLanguages && (
+              <button
+                onClick={() => onTranslateDay(di)}
+                disabled={translateBusyKey === `d-${di}`}
+                className={cn(
+                  "mt-2 flex h-9 items-center gap-[6px] rounded-sm bg-ink px-[12px] py-0 text-[12.5px] font-extrabold text-white touch-manipulation",
+                  translateBusyKey === `d-${di}`
+                    ? "cursor-default opacity-70"
+                    : "cursor-pointer opacity-100",
+                )}
+              >
+                <Sparkles size={14} />
+                {translateBusyKey === `d-${di}` ? "Translating…" : "Translate"}
+              </button>
+            )}
           </div>
 
           {/* Flights */}
           <SectionLabel color="#1E6FA8">Flights</SectionLabel>
           {(day.flights ?? []).map((f, fi) => (
-            <div key={fi} style={{ background: "#EAF2F9", border: "1px solid #D2E3F0", borderRadius: 14, padding: 10, marginBottom: 10 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                <input value={f.time} onChange={(e) => update((t) => updateFlight(t, di, fi, "time", e.target.value))} placeholder="Time" style={{ ...flightInput, width: 62, fontWeight: 700, flexShrink: 0 }} />
-                <input value={f.flightNo} onChange={(e) => update((t) => updateFlight(t, di, fi, "flightNo", e.target.value))} placeholder="Flight no." style={{ ...flightInput, flex: 1, minWidth: 0, fontWeight: 700 }} />
-                <DeleteBtn onClick={() => update((t) => delFlight(t, di, fi))} />
+            <div
+              key={fi}
+              className="mb-[10px] rounded-md border border-[#d2e3f0] bg-[#eaf2f9] p-[10px]"
+            >
+              <input
+                type="time"
+                value={f.time}
+                onChange={(e) =>
+                  update((t) => updateFlight(t, di, fi, "time", e.target.value))
+                }
+                aria-label="Flight time"
+                className={cn(flightInput, "w-[120px] shrink-0 font-bold")}
+              />
+              <input
+                value={f.flightNo}
+                onChange={(e) =>
+                  update((t) =>
+                    updateFlight(t, di, fi, "flightNo", e.target.value),
+                  )
+                }
+                placeholder="Flight no.…"
+                className={cn(flightInput, "mt-2 w-full font-bold")}
+              />
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={f.from}
+                  onChange={(e) =>
+                    update((t) =>
+                      updateFlight(t, di, fi, "from", e.target.value),
+                    )
+                  }
+                  placeholder="From…"
+                  className={cn(flightInput, "min-w-0 flex-1 font-semibold")}
+                />
+                <input
+                  value={f.to}
+                  onChange={(e) =>
+                    update((t) => updateFlight(t, di, fi, "to", e.target.value))
+                  }
+                  placeholder="To…"
+                  className={cn(flightInput, "min-w-0 flex-1 font-semibold")}
+                />
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={f.from} onChange={(e) => update((t) => updateFlight(t, di, fi, "from", e.target.value))} placeholder="From" style={{ ...flightInput, flex: 1, minWidth: 0, fontWeight: 600 }} />
-                <input value={f.to} onChange={(e) => update((t) => updateFlight(t, di, fi, "to", e.target.value))} placeholder="To" style={{ ...flightInput, flex: 1, minWidth: 0, fontWeight: 600 }} />
-              </div>
+              <ActionBar
+                reorder={{
+                  canUp: fi > 0,
+                  canDown: fi < (day.flights?.length ?? 0) - 1,
+                  onUp: () => update((t) => moveFlight(t, di, fi, fi - 1)),
+                  onDown: () => update((t) => moveFlight(t, di, fi, fi + 1)),
+                }}
+                onDelete={() => update((t) => delFlight(t, di, fi))}
+              />
             </div>
           ))}
-          <div style={{ marginBottom: 16 }}>
-            <AddRow label="Add flight" color="#2C6E9B" onClick={() => update((t) => addFlight(t, di))} />
+          <div className="mb-4">
+            <AddRow
+              label="Add flight"
+              color="#2C6E9B"
+              onClick={() => update((t) => addFlight(t, di))}
+            />
           </div>
 
           {/* Activities */}
@@ -145,52 +271,190 @@ export function DaysTab({ trip, dayIndex, onSelectDay, onPrevDay, onNextDay, upd
           {day.items.map((it, ii) => {
             const busy = aiBusyKey === `${di}-${ii}`;
             return (
-              <div key={ii} style={{ ...ui.card, padding: 11, marginBottom: 10 }}>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 11, background: `center/cover url("${imgFor(it, 120, 120)}")`, flexShrink: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }} />
-                  <input value={it.time} onChange={(e) => update((t) => updateItem(t, di, ii, "time", e.target.value))} style={{ ...fieldInput, height: 42, width: 62, fontWeight: 700, flexShrink: 0 }} />
-                  <input value={it.title} onChange={(e) => update((t) => updateItem(t, di, ii, "title", e.target.value))} style={{ ...fieldInput, height: 42, flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }} />
-                  <DeleteBtn onClick={() => update((t) => delItem(t, di, ii))} />
+              <div key={ii} className={cn(ui.card, "mb-[10px] p-[11px]")}>
+                <div className="flex items-center gap-[10px]">
+                  {(() => {
+                    const thumb = imgFor(it);
+                    return thumb ? (
+                      <div
+                        className="h-11 w-11 shrink-0 rounded-[11px] shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
+                        style={{ background: `center/cover url("${thumb}")` }}
+                      />
+                    ) : (
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-dashed border-border bg-surface text-faint"
+                        aria-hidden="true"
+                      >
+                        <ImageIcon size={18} strokeWidth={2} />
+                      </div>
+                    );
+                  })()}
+                  <input
+                    type="time"
+                    value={it.time}
+                    onChange={(e) =>
+                      update((t) =>
+                        updateItem(t, di, ii, "time", e.target.value),
+                      )
+                    }
+                    aria-label="Activity time"
+                    className={cn(fieldInput, "w-[120px] shrink-0 font-bold")}
+                  />
                 </div>
+                <input
+                  value={it.title}
+                  onChange={(e) =>
+                    update((t) =>
+                      updateItem(t, di, ii, "title", e.target.value),
+                    )
+                  }
+                  aria-label="Activity title"
+                  placeholder="Title…"
+                  className={cn(
+                    fieldInput,
+                    "mt-2 w-full text-[15px] font-semibold",
+                  )}
+                />
                 <textarea
                   value={it.note ?? ""}
-                  onChange={(e) => update((t) => setItemContent(t, di, ii, { note: e.target.value }))}
-                  placeholder="Description"
-                  style={{ width: "100%", marginTop: 8, minHeight: 54, borderRadius: 10, border: "1px solid #E7DFD2", padding: "8px 10px", fontSize: 13.5, fontWeight: 500, color: "#1F1B16", boxSizing: "border-box", outline: "none", fontFamily: "inherit", resize: "vertical", lineHeight: 1.45 }}
+                  onChange={(e) =>
+                    update((t) =>
+                      setItemContent(t, di, ii, { note: e.target.value }),
+                    )
+                  }
+                  placeholder="Description…"
+                  className="mt-2 min-h-[54px] w-full resize-y rounded-sm border border-[#e7dfd2] px-[10px] py-2 text-[13.5px] font-medium leading-[1.45] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
                 />
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-                  <input value={it.image ?? ""} onChange={(e) => update((t) => setItemContent(t, di, ii, { image: e.target.value }))} placeholder="Image URL" style={{ ...fieldInput, flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600 }} />
+                <input
+                  value={it.tip ?? ""}
+                  onChange={(e) =>
+                    update((t) =>
+                      setItemContent(t, di, ii, { tip: e.target.value }),
+                    )
+                  }
+                  aria-label="Tip"
+                  placeholder="Tip (amber callout)…"
+                  className={cn(
+                    fieldInput,
+                    "mt-2 w-full text-[13.5px] font-medium",
+                  )}
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={it.image ?? ""}
+                    onChange={(e) =>
+                      update((t) =>
+                        setItemContent(t, di, ii, { image: e.target.value }),
+                      )
+                    }
+                    aria-label="Image URL"
+                    placeholder="Image URL…"
+                    className={cn(
+                      fieldInput,
+                      "min-w-0 flex-1 text-[13px] font-semibold",
+                    )}
+                  />
                   <button
                     onClick={() => onAskAI(di, ii)}
                     disabled={busy}
-                    style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, height: 40, padding: "0 14px", borderRadius: 10, background: "#1F1B16", color: "#fff", fontSize: 13.5, fontWeight: 800, cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.7 : 1 }}
+                    className={cn(
+                      "flex h-11 shrink-0 items-center gap-[6px] rounded-sm bg-ink px-[14px] py-0 text-[13.5px] font-extrabold text-white touch-manipulation",
+                      busy
+                        ? "cursor-default opacity-70"
+                        : "cursor-pointer opacity-100",
+                    )}
                   >
-                    <SparkleIcon />
+                    <Sparkles size={16} />
                     {busy ? "Generating…" : "Ask AI"}
                   </button>
+                  {hasLanguages && (
+                    <button
+                      onClick={() => onTranslateItem(di, ii)}
+                      disabled={translateBusyKey === `i-${di}-${ii}`}
+                      className={cn(
+                        "flex h-11 shrink-0 items-center gap-[6px] rounded-sm border border-ink bg-transparent px-[12px] py-0 text-[13px] font-extrabold text-ink touch-manipulation",
+                        translateBusyKey === `i-${di}-${ii}`
+                          ? "cursor-default opacity-50"
+                          : "cursor-pointer opacity-100",
+                      )}
+                    >
+                      <Sparkles size={15} />
+                      {translateBusyKey === `i-${di}-${ii}`
+                        ? "Translating…"
+                        : "Translate"}
+                    </button>
+                  )}
                 </div>
+                <ActionBar
+                  reorder={{
+                    canUp: ii > 0,
+                    canDown: ii < day.items.length - 1,
+                    onUp: () => update((t) => moveItem(t, di, ii, ii - 1)),
+                    onDown: () => update((t) => moveItem(t, di, ii, ii + 1)),
+                  }}
+                  onDelete={() => update((t) => delItem(t, di, ii))}
+                />
               </div>
             );
           })}
-          <div style={{ marginTop: 2 }}>
-            <AddRow label="Add activity" color="#8A8175" onClick={() => update((t) => addItem(t, di))} />
+          <div className="mt-[2px]">
+            <AddRow
+              label="Add activity"
+              color="#8A8175"
+              onClick={() => update((t) => addItem(t, di))}
+            />
           </div>
 
           {/* Accommodation */}
-          <div style={{ margin: "16px 0 8px" }}>
+          <div className="mb-2 mt-4">
             <SectionLabel color="#3B5B8C">Accommodation</SectionLabel>
           </div>
-          <div style={{ background: "#EEF2F8", border: "1px solid #DCE5F0", borderRadius: 14, padding: 11, display: "flex", gap: 10, alignItems: "center" }}>
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: "#3B5B8C", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M3 17v-4a2 2 0 0 1 2-2h9a4 4 0 0 1 4 4v2M3 14h18M3 17v3M21 17v3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+          <div className="flex items-center gap-[10px] rounded-md border border-[#dce5f0] bg-[#eef2f8] p-[11px]">
+            <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] bg-stay">
+              <BedDouble size={20} color="#fff" strokeWidth={2} />
             </div>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 7 }}>
-              <input value={day.stay?.name ?? ""} onChange={(e) => update((t) => updateStay(t, di, "name", e.target.value))} placeholder="Hotel name" style={{ ...fieldInput, width: "100%", height: 38, border: "1px solid #CFDAEA", fontSize: 14.5, fontWeight: 700 }} />
-              <input value={day.stay?.desc ?? ""} onChange={(e) => update((t) => updateStay(t, di, "desc", e.target.value))} placeholder="Short description" style={{ ...fieldInput, width: "100%", height: 38, border: "1px solid #CFDAEA", fontSize: 13.5, fontWeight: 500 }} />
+            <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+              <input
+                value={day.stay?.name ?? ""}
+                onChange={(e) =>
+                  update((t) => updateStay(t, di, "name", e.target.value))
+                }
+                placeholder="Hotel name…"
+                className={cn(
+                  fieldInput,
+                  "h-[38px] w-full border-[#cfdaea] text-[14.5px] font-bold",
+                )}
+              />
+              <input
+                value={day.stay?.desc ?? ""}
+                onChange={(e) =>
+                  update((t) => updateStay(t, di, "desc", e.target.value))
+                }
+                placeholder="Short description…"
+                className={cn(
+                  fieldInput,
+                  "h-[38px] w-full border-[#cfdaea] text-[13.5px] font-medium",
+                )}
+              />
             </div>
           </div>
+          {hasLanguages && day.stay?.name && (
+            <button
+              onClick={() => onTranslateStay(di)}
+              disabled={translateBusyKey === `s-${di}`}
+              className={cn(
+                "mt-2 flex h-9 items-center gap-[6px] rounded-sm bg-ink px-[12px] py-0 text-[12.5px] font-extrabold text-white touch-manipulation",
+                translateBusyKey === `s-${di}`
+                  ? "cursor-default opacity-70"
+                  : "cursor-pointer opacity-100",
+              )}
+            >
+              <Sparkles size={14} />
+              {translateBusyKey === `s-${di}` ? "Translating…" : "Translate"}
+            </button>
+          )}
         </div>
       </div>
     </>
