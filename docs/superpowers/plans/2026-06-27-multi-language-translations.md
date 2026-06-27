@@ -32,8 +32,7 @@
 - `src/components/admin/SettingsTab.tsx` — Languages card.
 - `src/components/admin/DaysTab.tsx` — Translate buttons.
 - `src/components/admin/Editor.tsx` — translate handlers; Ask AI chains translation.
-- `src/data/seedTrips.ts`, `src/data/chinaTrip.ts` — rebase `SeedTrip` on `RawTripData`.
-- `scripts/importChinaTrip.ts` — `normalizeTrip` before write.
+- `src/data/seedTrips.ts`, `src/data/chinaTrip.ts` — rebase `SeedTrip` on `RawTripData` (data-only files with no importers; they only need to compile).
 - `test/editTrip.test.ts` — extend with new helper tests.
 
 ---
@@ -488,8 +487,13 @@ In `blankTrip`, replace `nativeLang: null,` with `languages: [],`.
 
 - [ ] **Step 3: Verify**
 
-Run: `npx tsc -b && npx vitest run`
-Expected: PASS (existing tests still green; pure tests need no emulator).
+Run: `npx tsc -b && npx vitest run test/migrateTrip.test.ts test/localize.test.ts`
+Expected: PASS.
+
+> Do **not** run bare `npx vitest run` here — the suite includes
+> `test/firestore.rules.test.ts`, which needs the Firestore emulator (only provided
+> by the `npm test` wrapper). Scope quick runs to the pure-function files, or use
+> `npm test` for the full emulator-backed suite (done in Task 11).
 
 - [ ] **Step 4: Commit**
 
@@ -548,7 +552,7 @@ describe("language helpers", () => {
 });
 ```
 
-Note: update `fixture()` in this file to use `languages: []` instead of `nativeLang: null` (it currently sets `nativeLang: null`; the field is now optional so either compiles, but switch it to keep the fixture current).
+**Required:** update `fixture()` in this file to set `languages: []` (replace `nativeLang: null`). This is not cosmetic — the "does not mutate" test asserts `base.languages` equals `[]`, which fails if the fixture leaves `languages` undefined.
 
 - [ ] **Step 2: Run, verify it fails**
 
@@ -1013,11 +1017,15 @@ git commit -m "feat(admin): add languages card to settings"
 
 - [ ] **Step 1: Add translate handlers + Ask AI chaining in `Editor.tsx`**
 
-Add imports:
+Extend the **existing** import statements (do not add duplicate named imports —
+`Editor.tsx` already imports `generateActivityDescription`/`generateActivityImage` from
+`../../lib/ai` and `setItemContent` from `../../lib/editTrip`). Merge in the new names:
 
 ```ts
-import { translateItem, translateStay, translateDayTheme, generateActivityDescription, generateActivityImage } from "../../lib/ai";
-import { setItemContent, setItemTranslations, setStayTranslations, setDayTranslations } from "../../lib/editTrip";
+// from ../../lib/ai — add:
+import { /* …existing… */ translateItem, translateStay, translateDayTheme } from "../../lib/ai";
+// from ../../lib/editTrip — add:
+import { /* …existing… */ setItemTranslations, setStayTranslations, setDayTranslations } from "../../lib/editTrip";
 ```
 
 Add a translate-busy key state:
@@ -1174,17 +1182,9 @@ export type SeedTrip = Omit<RawTripData, "ownerId">;
 
 This keeps the existing `nativeLang` / `local` / `localName` literals valid with no content edits.
 
-- [ ] **Step 3: Normalise seeds at write time**
+- [ ] **Step 3: (No importer to update)**
 
-In `scripts/importChinaTrip.ts`, import `normalizeTrip` and apply it where the doc is assembled (the `{ ...chinaTrip, ownerId, … }` spread):
-
-```ts
-import { normalizeTrip } from "../src/lib/migrateTrip";
-// …
-const data = { ...normalizeTrip({ ...chinaTrip, ownerId } as RawTripData), /* timestamps etc. */ };
-```
-
-(Adjust to match the existing object assembly; the point is the persisted doc is in the new shape.)
+`src/data/seedTrips.ts` and `src/data/chinaTrip.ts` are **data-only** with no importers in the repo (the old `importChinaTrip.ts` / `npm run seed` no longer exist). The Step 2 type rebase is sufficient to keep them compiling. Nothing to do here — if a seed importer is added later, it should call `normalizeTrip(...)` before writing so the persisted doc is in the new shape.
 
 - [ ] **Step 4: Update the test fixture**
 
