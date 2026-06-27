@@ -51,7 +51,6 @@ export interface Phrase {
 
 export interface Stay {
   name: string;
-  localName?: string;
   desc?: string;
   address?: string;
   phone?: string;
@@ -72,8 +71,6 @@ export interface Item {
   kind: ItemKind;
   time: string;
   title: string;
-  /** Title in the destination's native language (optional). */
-  local?: string;
   place?: string;
   tag?: string;
   note?: string;
@@ -111,9 +108,7 @@ export interface Trip {
   password: string;
   published: boolean;
   /** Added non-English languages. English is always the implicit base. */
-  languages?: Lang[];
-  /** @deprecated migrated into `languages` on read. */
-  nativeLang?: Lang | null;
+  languages: Lang[];
   currency: Currency;
   hotel: Stay;
   contacts: Contact[];

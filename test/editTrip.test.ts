@@ -5,7 +5,6 @@ import {
   addTripLanguage,
   removeTripLanguage,
   setItemTranslations,
-  setStayTranslations,
   setDayTranslations,
 } from "../src/lib/editTrip";
 
