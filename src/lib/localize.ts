@@ -21,13 +21,13 @@ function applyOverrides<T extends object>(base: T, over: Partial<T> | undefined)
 /** Return a copy of `item` with the chosen language's overrides applied. */
 export function localizeItem(item: Item, lang: string): Item {
   if (lang === "en") return item;
-  return applyOverrides(item, item.t?.[lang]);
+  return applyOverrides<Item>(item, item.t?.[lang]);
 }
 
 /** Return a copy of `stay` with the chosen language's overrides applied. */
 export function localizeStay(stay: Stay, lang: string): Stay {
   if (lang === "en") return stay;
-  return applyOverrides(stay, stay.t?.[lang]);
+  return applyOverrides<Stay>(stay, stay.t?.[lang]);
 }
 
 /** The day's theme in the chosen language, falling back to English. */
