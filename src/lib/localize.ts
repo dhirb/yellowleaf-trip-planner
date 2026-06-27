@@ -5,13 +5,17 @@ import type { Day, Item, Stay } from "../types";
  * Empty strings are skipped so a blank translation never clobbers English.
  * Returns the original reference when nothing changes (cheap for memoisation).
  */
-function applyOverrides<T extends object>(base: T, over: Partial<T> | undefined): T {
+function applyOverrides<T extends object>(
+  base: T,
+  over: Partial<T> | undefined,
+): T {
   if (!over) return base;
   let out: T | null = null;
   for (const key of Object.keys(over) as (keyof T)[]) {
     const value = over[key];
-    if (value == null) continue;
-    if (typeof value === "string" && value.trim() === "") continue;
+    // Translatable fields are strings; a non-string or blank override never
+    // clobbers the English base (guards against malformed/legacy data).
+    if (typeof value !== "string" || value.trim() === "") continue;
     if (!out) out = { ...base };
     out[key] = value as T[keyof T];
   }

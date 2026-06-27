@@ -19,7 +19,10 @@ export function TravelerApp({ trip }: { trip: Trip }) {
   const [prefLang, setPrefLang] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(`yl.lang.${trip.id}`);
-      if (stored === "en" || (trip.languages ?? []).some((l) => l.code === stored)) {
+      if (
+        stored === "en" ||
+        (trip.languages ?? []).some((l) => l.code === stored)
+      ) {
         return stored as string;
       }
     } catch {
@@ -49,9 +52,13 @@ export function TravelerApp({ trip }: { trip: Trip }) {
 
   // Reset to English if the chosen language is no longer in the trip.
   useEffect(() => {
-    if (prefLang !== "en" && !(trip.languages ?? []).some((l) => l.code === prefLang)) {
-      setPrefLang("en");
+    if (
+      prefLang !== "en" &&
+      !(trip.languages ?? []).some((l) => l.code === prefLang)
+    ) {
+      changeLang("en");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.languages, prefLang]);
 
   const showLock = trip.visibility === "private" && !unlocked;

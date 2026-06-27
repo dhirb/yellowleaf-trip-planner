@@ -130,9 +130,46 @@ async function translateFields(
     `Fields:\n${JSON.stringify(fields, null, 2)}`;
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text().trim().replace(/^```json\s*|\s*```$/g, "");
+  const text = result.response
+    .text()
+    .trim()
+    .replace(/^```json\s*|\s*```$/g, "");
   if (!text) return {};
-  return JSON.parse(text) as Record<string, Record<string, string>>;
+
+  // The model output is untrusted: only keep the languages we asked for, and
+  // within each only the requested fields whose value is a non-empty string.
+  // This prevents malformed responses (objects, wrong keys, blanks) from
+  // reaching the trip and the traveler view.
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {};
+  }
+  return sanitizeTranslations(parsed, langs, fieldKeys);
+}
+
+/** Keep only requested language codes, requested fields, and non-empty strings. */
+export function sanitizeTranslations(
+  parsed: unknown,
+  langs: Lang[],
+  fieldKeys: string[],
+): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  if (typeof parsed !== "object" || parsed === null) return out;
+  const root = parsed as Record<string, unknown>;
+  for (const { code } of langs) {
+    const entry = root[code];
+    if (typeof entry !== "object" || entry === null) continue;
+    const fields = entry as Record<string, unknown>;
+    const clean: Record<string, string> = {};
+    for (const key of fieldKeys) {
+      const value = fields[key];
+      if (typeof value === "string" && value.trim() !== "") clean[key] = value;
+    }
+    if (Object.keys(clean).length > 0) out[code] = clean;
+  }
+  return out;
 }
 
 /** Translate an activity's fields into every target language. */
@@ -155,7 +192,10 @@ export async function translateStay(
   const fields: Record<string, string> = {};
   if (stay.name?.trim()) fields.name = stay.name.trim();
   if (stay.desc?.trim()) fields.desc = stay.desc.trim();
-  return (await translateFields(fields, langs)) as Record<string, StayTranslation>;
+  return (await translateFields(fields, langs)) as Record<
+    string,
+    StayTranslation
+  >;
 }
 
 /** Translate a day theme into every target language. */
@@ -165,5 +205,8 @@ export async function translateDayTheme(
 ): Promise<Record<string, DayTranslation>> {
   const t = theme.trim();
   if (!t) return {};
-  return (await translateFields({ theme: t }, langs)) as Record<string, DayTranslation>;
+  return (await translateFields({ theme: t }, langs)) as Record<
+    string,
+    DayTranslation
+  >;
 }
