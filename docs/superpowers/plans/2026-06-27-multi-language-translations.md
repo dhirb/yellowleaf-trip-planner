@@ -1160,7 +1160,7 @@ git commit -m "feat(admin): per-entity translate buttons and Ask AI translation"
 ## Task 11: Cleanup — drop legacy fields
 
 **Files:**
-- Modify: `src/types.ts`, `src/data/seedTrips.ts`, `src/data/chinaTrip.ts`, `scripts/importChinaTrip.ts`, `test/editTrip.test.ts`
+- Modify: `src/types.ts`, `src/data/seedTrips.ts`, `src/data/chinaTrip.ts`, `test/editTrip.test.ts`
 
 - [ ] **Step 1: Make `languages` required; remove deprecated fields from `types.ts`**
 
@@ -1202,7 +1202,7 @@ Expected: PASS — build clean, lint clean, all unit + Firestore-rules tests gre
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/types.ts src/data/ scripts/importChinaTrip.ts test/editTrip.test.ts src/
+git add src/types.ts src/data/ test/editTrip.test.ts src/
 git commit -m "refactor: remove legacy single-language fields"
 ```
 
