@@ -1,6 +1,7 @@
 import type { Day, Item } from "../types";
 import { ACC, SOFT } from "./ui";
 import { fallbackImage } from "./ids";
+import { localizeItem } from "./localize";
 
 export interface ViewItem {
   item: Item;
@@ -21,18 +22,18 @@ export function imgFor(item: Item, w = 320, h = 240): string {
 }
 
 /**
- * Build the day's display items, swapping in native-language titles when the
- * traveler has chosen the destination language (matches the prototype).
+ * Build the day's display items, applying the chosen language's translations
+ * where available.
  */
-export function buildViewItems(day: Day, useLocalLang: boolean): ViewItem[] {
+export function buildViewItems(day: Day, lang: string): ViewItem[] {
   const items = day.items ?? [];
-  return items.map((item, index) => {
-    const showLocal = useLocalLang && !!item.local;
+  return items.map((raw, index) => {
+    const item = localizeItem(raw, lang);
     return {
       item,
       index,
-      title: showLocal ? (item.local as string) : item.title,
-      place: showLocal ? item.title : item.place ?? "",
+      title: item.title,
+      place: item.place ?? "",
       thumb: imgFor(item),
       accent: ACC[item.kind],
       soft: SOFT[item.kind],
