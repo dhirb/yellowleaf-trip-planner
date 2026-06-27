@@ -86,7 +86,16 @@ Consumers localize the **entity first**, then existing view code runs unchanged:
   `ViewItem`. Because `ViewItem.item` is the localized copy, `DetailSheet` (which reads
   `item.note` / `item.tip` / `item.cost` directly) shows translated text with no edits.
 - `TravelerApp` passes `prefLang` (any code) instead of the `useLocalLang` boolean.
-- `DetailsScreen` / `DayScreen` localize the day theme and stay via the resolver.
+- `DayScreen`'s prop changes from `useLocalLang: boolean` to a `lang: string` code; its
+  own stay block (`useLStay`/`stayName`/`staySub`) routes through `localizeStay` instead
+  of reading `stay.localName`.
+- `DetailsScreen` localizes the day theme and stay via the resolver.
+
+**Behavior change:** today `buildViewItems` puts the native title in the *title* slot and
+the English title in the *place* slot (a dual native+English display). Under the resolver,
+the title slot shows the localized title and the place slot shows the localized `place`.
+The old "native title + English name underneath" pairing goes away — intentional, since
+`place` is now itself translated. QA should expect this.
 
 ### AI (`src/lib/ai.ts`)
 
@@ -149,7 +158,8 @@ setDayTranslations(trip, di, map): Trip
 Pure normalization on every read, so existing documents keep working:
 - `data.languages ?? (data.nativeLang ? [data.nativeLang] : [])` → `trip.languages`.
 - For each item: if legacy `item.local` and a native code exists, fold into
-  `t[code].title`; drop `local`.
+  `t[code].title`; drop `local`. If `local` exists but there is **no** native code
+  (shouldn't happen in seed data), drop it silently — there is nowhere to fold it.
 - For each stay (per-day + `trip.hotel`): fold `localName` → `t[code].name`; drop it.
 - Drop `nativeLang` from the returned object.
 
@@ -171,6 +181,10 @@ the new `languages` array and nested `t` maps are already permitted.
 - **Migration normalizer**: `nativeLang` → `languages`; `local`/`localName` → `t`;
   already-migrated docs pass through unchanged.
 - AI is mocked; no live calls in tests.
+
+These are pure-function tests with no emulator dependency, unlike the existing
+`firestore.rules.test.ts` (which runs under `firebase emulators:exec`). The plan should
+ensure they run without requiring the emulator to be up.
 
 ## Accepted limitations
 
