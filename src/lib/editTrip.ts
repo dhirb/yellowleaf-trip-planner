@@ -1,4 +1,12 @@
-import type { ContactKind, Item, Trip } from "../types";
+import type {
+  ContactKind,
+  DayTranslation,
+  Item,
+  ItemTranslation,
+  Lang,
+  StayTranslation,
+  Trip,
+} from "../types";
 import { addDays, daysBetween } from "./date";
 
 /**
@@ -10,23 +18,53 @@ function clone(trip: Trip): Trip {
   return structuredClone(trip);
 }
 
-export function setTripField<K extends keyof Trip>(trip: Trip, field: K, value: Trip[K]): Trip {
+/**
+ * Relocate one element within an array, in place. No-op when `to` is out of
+ * range or equal to `from`, so callers can pass `from ± 1` without guarding ends.
+ */
+function moveInArray<T>(arr: T[], from: number, to: number): void {
+  if (to < 0 || to >= arr.length || from === to) return;
+  const [el] = arr.splice(from, 1);
+  arr.splice(to, 0, el);
+}
+
+export function setTripField<K extends keyof Trip>(
+  trip: Trip,
+  field: K,
+  value: Trip[K],
+): Trip {
   return { ...trip, [field]: value };
 }
 
-export function setDayField(trip: Trip, di: number, field: "theme" | "weather", value: string): Trip {
+export function setDayField(
+  trip: Trip,
+  di: number,
+  field: "theme" | "weather",
+  value: string,
+): Trip {
   const next = clone(trip);
   next.days[di][field] = value;
   return next;
 }
 
-export function updateItem(trip: Trip, di: number, ii: number, field: keyof Item, value: string): Trip {
+export function updateItem(
+  trip: Trip,
+  di: number,
+  ii: number,
+  field: keyof Item,
+  value: string,
+): Trip {
   const next = clone(trip);
   (next.days[di].items[ii][field] as string) = value;
   return next;
 }
 
-export function setItemContent(trip: Trip, di: number, ii: number, patch: Partial<Item>): Trip {
+export function setItemContent(
+  trip: Trip,
+  di: number,
+  ii: number,
+  patch: Partial<Item>,
+): Trip {
   const next = clone(trip);
   next.days[di].items[ii] = { ...next.days[di].items[ii], ...patch };
   return next;
@@ -54,7 +92,24 @@ export function delItem(trip: Trip, di: number, ii: number): Trip {
   return next;
 }
 
-export function updateFlight(trip: Trip, di: number, fi: number, field: "time" | "flightNo" | "from" | "to", value: string): Trip {
+export function moveItem(
+  trip: Trip,
+  di: number,
+  from: number,
+  to: number,
+): Trip {
+  const next = clone(trip);
+  moveInArray(next.days[di].items, from, to);
+  return next;
+}
+
+export function updateFlight(
+  trip: Trip,
+  di: number,
+  fi: number,
+  field: "time" | "flightNo" | "from" | "to",
+  value: string,
+): Trip {
   const next = clone(trip);
   next.days[di].flights[fi][field] = value;
   return next;
@@ -63,7 +118,13 @@ export function updateFlight(trip: Trip, di: number, fi: number, field: "time" |
 export function addFlight(trip: Trip, di: number): Trip {
   const next = clone(trip);
   if (!next.days[di].flights) next.days[di].flights = [];
-  next.days[di].flights.push({ time: "12:00", flightNo: "", from: "", to: "", kind: "arrival" });
+  next.days[di].flights.push({
+    time: "12:00",
+    flightNo: "",
+    from: "",
+    to: "",
+    kind: "arrival",
+  });
   return next;
 }
 
@@ -73,7 +134,23 @@ export function delFlight(trip: Trip, di: number, fi: number): Trip {
   return next;
 }
 
-export function updateStay(trip: Trip, di: number, field: "name" | "desc", value: string): Trip {
+export function moveFlight(
+  trip: Trip,
+  di: number,
+  from: number,
+  to: number,
+): Trip {
+  const next = clone(trip);
+  moveInArray(next.days[di].flights, from, to);
+  return next;
+}
+
+export function updateStay(
+  trip: Trip,
+  di: number,
+  field: "name" | "desc",
+  value: string,
+): Trip {
   const next = clone(trip);
   const day = next.days[di];
   if (!day.stay) day.stay = { name: "", desc: "", address: "", phone: "" };
@@ -81,7 +158,12 @@ export function updateStay(trip: Trip, di: number, field: "name" | "desc", value
   return next;
 }
 
-export function updateContact(trip: Trip, ci: number, field: "label" | "value" | "kind", value: string): Trip {
+export function updateContact(
+  trip: Trip,
+  ci: number,
+  field: "label" | "value" | "kind",
+  value: string,
+): Trip {
   const next = clone(trip);
   if (field === "kind") next.contacts[ci].kind = value as ContactKind;
   else next.contacts[ci][field] = value;
@@ -100,8 +182,17 @@ export function delContact(trip: Trip, ci: number): Trip {
   return next;
 }
 
+export function moveContact(trip: Trip, from: number, to: number): Trip {
+  const next = clone(trip);
+  moveInArray(next.contacts, from, to);
+  return next;
+}
+
 export function toggleVisibility(trip: Trip): Trip {
-  return { ...trip, visibility: trip.visibility === "public" ? "private" : "public" };
+  return {
+    ...trip,
+    visibility: trip.visibility === "public" ? "private" : "public",
+  };
 }
 
 /** Shift the whole trip so day 0 starts on `newStart`. */
@@ -124,8 +215,83 @@ export function setTripEnd(trip: Trip, newEnd: string): Trip | null {
   const next = clone(trip);
   while (next.days.length < want) {
     const last = next.days[next.days.length - 1].date;
-    next.days.push({ date: addDays(last, 1), theme: "New day", weather: "", items: [], stay: null, flights: [] });
+    next.days.push({
+      date: addDays(last, 1),
+      theme: "New day",
+      weather: "",
+      items: [],
+      stay: null,
+      flights: [],
+    });
   }
   while (next.days.length > want) next.days.pop();
+  return next;
+}
+
+/** Shallow-merge per-language override maps, immutably. */
+function mergeT<V extends object>(
+  existing: Record<string, V> | undefined,
+  incoming: Record<string, V>,
+): Record<string, V> {
+  const out: Record<string, V> = { ...(existing ?? {}) };
+  for (const code of Object.keys(incoming)) {
+    out[code] = { ...(out[code] ?? {}), ...incoming[code] } as V;
+  }
+  return out;
+}
+
+export function addTripLanguage(trip: Trip, lang: Lang): Trip {
+  const langs = trip.languages ?? [];
+  if (langs.some((l) => l.code === lang.code)) return trip;
+  return { ...trip, languages: [...langs, lang] };
+}
+
+/** Remove a language and prune its translations from every entity. */
+export function removeTripLanguage(trip: Trip, code: string): Trip {
+  const next = clone(trip);
+  next.languages = (next.languages ?? []).filter((l) => l.code !== code);
+  const prune = (e: { t?: Record<string, unknown> } | null | undefined) => {
+    if (e?.t) delete e.t[code];
+  };
+  for (const d of next.days) {
+    for (const it of d.items) prune(it);
+    prune(d.stay);
+    prune(d);
+  }
+  prune(next.hotel);
+  return next;
+}
+
+export function setItemTranslations(
+  trip: Trip,
+  di: number,
+  ii: number,
+  map: Record<string, ItemTranslation>,
+): Trip {
+  const next = clone(trip);
+  const it = next.days[di].items[ii];
+  it.t = mergeT<ItemTranslation>(it.t, map);
+  return next;
+}
+
+export function setStayTranslations(
+  trip: Trip,
+  di: number,
+  map: Record<string, StayTranslation>,
+): Trip {
+  const next = clone(trip);
+  const stay = next.days[di].stay;
+  if (!stay) return trip;
+  stay.t = mergeT<StayTranslation>(stay.t, map);
+  return next;
+}
+
+export function setDayTranslations(
+  trip: Trip,
+  di: number,
+  map: Record<string, DayTranslation>,
+): Trip {
+  const next = clone(trip);
+  next.days[di].t = mergeT<DayTranslation>(next.days[di].t, map);
   return next;
 }
