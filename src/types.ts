@@ -2,9 +2,13 @@
 
 export type ItemKind = "attraction" | "meal" | "stay" | "transport" | "other";
 export type FlightKind = "arrival" | "departure";
-export type ContactKind = "emergency" | "family" | "hotel" | "embassy" | "other";
+export type ContactKind =
+  | "emergency"
+  | "family"
+  | "hotel"
+  | "embassy"
+  | "other";
 export type Visibility = "public" | "private";
-export type LayoutMode = "timeline" | "cards" | "list";
 
 export interface Currency {
   code: string;
@@ -20,6 +24,17 @@ export interface Currency {
 export interface Lang {
   code: string;
   label: string;
+}
+
+/** Per-language field overrides for an Item (English is the base). */
+export type ItemTranslation = Partial<
+  Pick<Item, "title" | "note" | "place" | "tag" | "tip">
+>;
+/** Per-language field overrides for a Stay. */
+export type StayTranslation = Partial<Pick<Stay, "name" | "desc">>;
+/** Per-language field overrides for a Day. */
+export interface DayTranslation {
+  theme?: string;
 }
 
 export interface Contact {
@@ -41,6 +56,8 @@ export interface Stay {
   address?: string;
   phone?: string;
   note?: string;
+  /** Per-language overrides, keyed by Lang.code. */
+  t?: Record<string, StayTranslation>;
 }
 
 export interface Flight {
@@ -63,6 +80,8 @@ export interface Item {
   cost?: string;
   tip?: string;
   image?: string;
+  /** Per-language overrides, keyed by Lang.code. */
+  t?: Record<string, ItemTranslation>;
 }
 
 export interface Day {
@@ -75,6 +94,8 @@ export interface Day {
   flights: Flight[];
   /** Optional per-day currency override (e.g. multi-country trips). */
   currency?: Currency;
+  /** Per-language overrides, keyed by Lang.code. */
+  t?: Record<string, DayTranslation>;
 }
 
 export interface Trip {
@@ -89,7 +110,10 @@ export interface Trip {
   /** Access code for private trips (soft, client-side gate). */
   password: string;
   published: boolean;
-  nativeLang: Lang | null;
+  /** Added non-English languages. English is always the implicit base. */
+  languages?: Lang[];
+  /** @deprecated migrated into `languages` on read. */
+  nativeLang?: Lang | null;
   currency: Currency;
   hotel: Stay;
   contacts: Contact[];
@@ -98,6 +122,8 @@ export interface Trip {
   /** Epoch millis; serverTimestamp is normalised to a number on read. */
   createdAt?: number;
   updatedAt?: number;
+  /** Epoch millis when soft-deleted. Absent/null means the trip is active. */
+  deletedAt?: number | null;
 }
 
 /** Shape stored in Firestore (everything except the doc id). */
