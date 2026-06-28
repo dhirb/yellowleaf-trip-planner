@@ -83,7 +83,7 @@ export function DayStrip({
           >
             <div
               className={cn(
-                "text-[11.5px] font-bold uppercase",
+                "text-tag font-bold uppercase",
                 on ? "text-[rgba(255,255,255,0.85)]" : "text-faint",
               )}
             >
@@ -91,7 +91,7 @@ export function DayStrip({
             </div>
             <div
               className={cn(
-                "mt-0.5 text-[19px] font-extrabold",
+                "mt-0.5 text-subtitle font-extrabold",
                 on ? "text-white" : "text-ink",
               )}
             >

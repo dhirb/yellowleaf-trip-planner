@@ -23,8 +23,8 @@ export function TravelerRoute() {
     if (!online) {
       return (
         <Centered>
-          <div className="text-[22px] font-extrabold">You're offline</div>
-          <div className="text-[15px] font-medium leading-[1.4] text-muted">
+          <div className="text-title font-extrabold">You're offline</div>
+          <div className="text-body font-medium leading-[1.4] text-muted">
             If you've opened this trip on this device before, it'll appear in a
             moment. Otherwise, reconnect to load it.
           </div>
@@ -41,8 +41,8 @@ export function TravelerRoute() {
   if (!trip) {
     return (
       <Centered>
-        <div className="text-[22px] font-extrabold">Trip not available</div>
-        <div className="text-[15px] font-medium leading-[1.4] text-muted">
+        <div className="text-title font-extrabold">Trip not available</div>
+        <div className="text-body font-medium leading-[1.4] text-muted">
           {error
             ? "This trip is private or hasn't been published yet."
             : "We couldn't find a trip at this link."}

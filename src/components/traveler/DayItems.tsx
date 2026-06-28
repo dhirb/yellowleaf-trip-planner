@@ -12,7 +12,7 @@ interface DayItemsProps {
 export function DayItems({ items, timeFormat, onOpen }: DayItemsProps) {
   if (items.length === 0) {
     return (
-      <div className="px-1 py-[26px] text-center text-[15px] font-semibold text-faint">
+      <div className="px-1 py-[26px] text-center text-body font-semibold text-faint">
         Nothing planned for this day yet.
       </div>
     );

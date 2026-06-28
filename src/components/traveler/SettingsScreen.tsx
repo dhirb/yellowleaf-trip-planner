@@ -40,7 +40,7 @@ const Pill = ({
   <button
     onClick={onClick}
     className={cn(
-      "flex-1 cursor-pointer rounded-[12px] px-0 py-[11px] text-center text-[14.5px] font-bold",
+      "flex-1 cursor-pointer rounded-[12px] px-0 py-[11px] text-center text-small font-bold",
       on ? "bg-accent text-white" : "bg-control text-ink-dim",
     )}
   >
@@ -49,7 +49,7 @@ const Pill = ({
 );
 
 const Label = ({ children }: { children: string }) => (
-  <div className="mb-[10px] text-[12px] font-extrabold uppercase tracking-[0.6px] text-faint">
+  <div className="mb-[10px] text-tag font-extrabold uppercase tracking-[0.6px] text-faint">
     {children}
   </div>
 );
@@ -80,7 +80,7 @@ export function SettingsScreen({
   return (
     <>
       <div className="shrink-0 px-[18px] pt-[max(env(safe-area-inset-top),14px)] pb-[12px]">
-        <div className="text-[27px] font-extrabold tracking-[-0.5px]">
+        <div className="text-display font-extrabold tracking-[-0.5px]">
           Settings
         </div>
       </div>
@@ -98,7 +98,7 @@ export function SettingsScreen({
                   key={l.code}
                   onClick={() => setPrefLang(l.code)}
                   className={cn(
-                    "flex-1 cursor-pointer rounded-[12px] px-0 py-3 text-center text-[15px] font-bold",
+                    "flex-1 cursor-pointer rounded-[12px] px-0 py-3 text-center text-body font-bold",
                     prefLang === l.code
                       ? "bg-accent text-white"
                       : "bg-control text-ink-dim",
@@ -108,7 +108,7 @@ export function SettingsScreen({
                 </button>
               ))}
             </div>
-            <div className="mt-[10px] text-[13px] font-semibold leading-[1.4] text-faint">
+            <div className="mt-[10px] text-caption font-semibold leading-[1.4] text-faint">
               Attractions & hotels show in your language where available.
             </div>
           </div>
@@ -123,7 +123,7 @@ export function SettingsScreen({
                 key={o.value}
                 onClick={() => setTimeFormat(o.value)}
                 className={cn(
-                  "flex-1 cursor-pointer rounded-[12px] px-0 py-3 text-center text-[15px] font-bold",
+                  "flex-1 cursor-pointer rounded-[12px] px-0 py-3 text-center text-body font-bold",
                   timeFormat === o.value
                     ? "bg-accent text-white"
                     : "bg-control text-ink-dim",
@@ -133,7 +133,7 @@ export function SettingsScreen({
               </button>
             ))}
           </div>
-          <div className="mt-[10px] text-[13px] font-semibold leading-[1.4] text-faint">
+          <div className="mt-[10px] text-caption font-semibold leading-[1.4] text-faint">
             {timeFormat === "12h"
               ? "Activity times show as 2:05 PM."
               : "Activity times show as 14:05."}
@@ -167,7 +167,7 @@ export function SettingsScreen({
         {/* Money */}
         <div className={ui.padCard}>
           <div className="mb-[10px] flex items-center justify-between">
-            <div className="text-[12px] font-extrabold uppercase tracking-[0.6px] text-faint">
+            <div className="text-tag font-extrabold uppercase tracking-[0.6px] text-faint">
               Money
             </div>
             {multiCur && (
@@ -177,7 +177,7 @@ export function SettingsScreen({
                     key={cc.code}
                     onClick={() => setCurSel(cc.code)}
                     className={cn(
-                      "cursor-pointer rounded-pill px-[12px] py-[5px] text-[12.5px] font-extrabold",
+                      "cursor-pointer rounded-pill px-[12px] py-[5px] text-caption font-extrabold",
                       cc.code === cur.code
                         ? "bg-accent text-white"
                         : "bg-control text-ink-dim",
@@ -190,19 +190,19 @@ export function SettingsScreen({
             )}
           </div>
           <div className="my-1 flex items-baseline gap-[10px]">
-            <div className="text-[30px] font-extrabold tracking-[-0.5px]">
+            <div className="text-display font-extrabold tracking-[-0.5px]">
               {cur.symbol}
               {conv.toLocaleString()}
             </div>
-            <div className="text-[18px] font-bold text-muted">
+            <div className="text-lead font-bold text-muted">
               ≈ {cur.homeSymbol}
               {toHome(conv, cur)}
             </div>
           </div>
-          <div className="mb-3 text-[13.5px] font-semibold text-faint">
+          <div className="mb-3 text-caption font-semibold text-faint">
             {rateLine(cur)}
           </div>
-          <div className="mb-[6px] text-[12.5px] font-bold text-ink-dim">
+          <div className="mb-[6px] text-caption font-bold text-ink-dim">
             Enter an amount ({cur.code})
           </div>
           <input

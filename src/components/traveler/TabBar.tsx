@@ -24,7 +24,7 @@ function Tab({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-1 cursor-pointer flex-col items-center gap-1 bg-transparent px-0 py-[2px] text-[11.5px] font-bold tracking-[0.1px]",
+        "flex flex-1 cursor-pointer flex-col items-center gap-1 bg-transparent px-0 py-[2px] text-tag font-bold tracking-[0.1px]",
         on ? "text-accent" : "text-faint",
       )}
     >
