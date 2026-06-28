@@ -15,7 +15,9 @@
     "deploy": "npm run build && firebase deploy --only hosting,firestore",
     "emulators": "firebase emulators:start",
     "provision": "tsx scripts/provisionUser.ts",
-    "build:airports": "tsx scripts/buildAirports.ts"
+    "build:airports": "tsx scripts/buildAirports.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
