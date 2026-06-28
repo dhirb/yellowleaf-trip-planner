@@ -12,6 +12,7 @@ import { StayDetailScreen } from "./StayDetailScreen";
 import { InstallPrompt } from "./InstallPrompt";
 import { TabBar, type TravelerScreen } from "./TabBar";
 import { useTimeFormat } from "../../hooks/useTimeFormat";
+import { useFontScale } from "../../hooks/useFontScale";
 
 /** Which card, if any, has been tapped open into its full-page detail view. */
 type OpenTarget =
@@ -48,6 +49,7 @@ export function TravelerApp({ trip }: { trip: Trip }) {
     }
   };
   const { timeFormat, setTimeFormat } = useTimeFormat();
+  const { fontScale, setFontScale } = useFontScale();
 
   const today = todayISO();
 
@@ -133,6 +135,8 @@ export function TravelerApp({ trip }: { trip: Trip }) {
           setPrefLang={changeLang}
           timeFormat={timeFormat}
           setTimeFormat={setTimeFormat}
+          fontScale={fontScale}
+          setFontScale={setFontScale}
         />
       )}
 
