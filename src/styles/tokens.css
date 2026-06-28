@@ -58,6 +58,20 @@
   /* ── Type ── */
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 
+  /* ── Type scale (traveler) ──
+   * Each size scales with --font-scale (set per-device by useFontScale).
+   * The `, 1` fallback keeps any surface that doesn't set the variable
+   * (the admin view) at exactly 1×. Only font-size reads this — padding,
+   * gaps, icons and radii stay fixed, so scaling is text-only. */
+  --text-tag: calc(12px * var(--font-scale, 1));
+  --text-caption: calc(13px * var(--font-scale, 1));
+  --text-small: calc(14px * var(--font-scale, 1));
+  --text-body: calc(15px * var(--font-scale, 1));
+  --text-lead: calc(17px * var(--font-scale, 1));
+  --text-subtitle: calc(19px * var(--font-scale, 1));
+  --text-title: calc(22px * var(--font-scale, 1));
+  --text-display: calc(27px * var(--font-scale, 1));
+
   /* ── Named animations (keyframes live in global.css) ── */
   --animate-sheet-up: sheetUp 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
   --animate-fade-in: fadeIn 0.2s ease;
