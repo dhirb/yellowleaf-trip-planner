@@ -4,23 +4,7 @@ export function Toast({ message }: { message: string }) {
   return (
     <div
       role="status"
-      style={{
-        position: "absolute",
-        bottom: 40,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 90,
-        background: "#1F1B16",
-        color: "#fff",
-        fontSize: 14.5,
-        fontWeight: 600,
-        padding: "13px 20px",
-        borderRadius: 14,
-        boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-        maxWidth: "84%",
-        textAlign: "center",
-        animation: "toastIn .25s ease",
-      }}
+      className="absolute bottom-10 left-1/2 z-[90] max-w-[84%] -translate-x-1/2 rounded-md bg-ink px-5 py-[13px] text-center text-[14.5px] font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] animate-toast-in"
     >
       {message}
     </div>

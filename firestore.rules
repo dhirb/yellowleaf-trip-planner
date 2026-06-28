@@ -5,24 +5,65 @@ service cloud.firestore {
 
     // Trips. One document per trip, owned by the admin who created it.
     match /trips/{tripId} {
+      // Admin role is granted via a custom claim by scripts/provisionUser.ts.
+      function isAdmin() {
+        return request.auth != null && request.auth.token.role == 'admin';
+      }
       function isOwner() {
         return request.auth != null && request.auth.uid == resource.data.ownerId;
+      }
+      // A co-owner is granted edit access by the owner, matched by account email
+      // (tokens carry the email; the client cannot resolve another user's uid).
+      function isCoOwner() {
+        return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email in resource.data.get('coOwnerEmails', []);
       }
       function creatingAsSelf() {
         return request.auth != null
           && request.resource.data.ownerId == request.auth.uid;
       }
+      // A trip is "deleted" when it carries a deletedAt marker (soft delete).
+      function isDeleted() {
+        return resource.data.get('deletedAt', null) != null;
+      }
 
-      // Anyone may read a published trip (public link or private + access code,
-      // which is gated client-side). Owners can always read their own drafts.
-      allow read: if resource.data.published == true || isOwner();
+      // Anyone may read a published, non-deleted trip (public link or private +
+      // access code, which is gated client-side). Owners and co-owners can always
+      // read their drafts; soft-deleted trips disappear from public links immediately.
+      allow read: if (resource.data.published == true && !isDeleted())
+        || isOwner() || isCoOwner();
 
-      // A signed-in user may create a trip only as themselves.
-      allow create: if creatingAsSelf();
+      // Only a provisioned admin may create a trip, and only as themselves.
+      allow create: if isAdmin() && creatingAsSelf();
 
-      // Only the owner may modify or remove a trip, and may not reassign ownership.
-      allow update: if isOwner() && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isOwner();
+      // Ownership never changes via update. The owning admin may modify anything
+      // (including the co-owner list and the soft-delete marker). A co-owner may
+      // edit trip content but may not alter the co-owner list or soft-delete.
+      allow update: if isAdmin()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && (
+          isOwner()
+          || (
+            isCoOwner()
+            && request.resource.data.get('coOwnerEmails', [])
+               == resource.data.get('coOwnerEmails', [])
+            && request.resource.data.get('deletedAt', null)
+               == resource.data.get('deletedAt', null)
+          )
+        );
+
+      // No hard deletes — trips are removed via the soft-delete marker above.
+      allow delete: if false;
+    }
+
+    // Authorized users, keyed by Auth uid. Provisioned server-side by the
+    // Admin SDK (scripts/provisionUser.ts), which bypasses these rules; the role
+    // is also mirrored into a custom claim. Clients may read only their own
+    // record and may never write here.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
 
     // Everything else is denied by default.

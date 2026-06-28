@@ -1,12 +1,12 @@
-import type { CSSProperties } from "react";
-import type { ContactKind, ItemKind } from "../types";
+import type { Contact, ContactKind, ItemKind } from "../types";
+import { cn } from "./cn";
 
-/** Ink/neutral palette (kept in sync with tokens.css). */
+/** Ink/neutral palette (kept in sync with tokens.css) for dynamic inline styles. */
 export const INK = "#1F1B16";
 export const MUTED = "#A89F92";
 export const ACCENT = "#C2541F";
 
-/** Strong category colours (icon chips, accents). */
+/** Strong category colours (icon chips, accents). Used for data-driven inline styles. */
 export const ACC: Record<ItemKind, string> = {
   attraction: "#C2541F",
   meal: "#2F7D5B",
@@ -15,7 +15,7 @@ export const ACC: Record<ItemKind, string> = {
   other: "#8A8175",
 };
 
-/** Soft category tints (tag pills). */
+/** Soft category tints (tag pills). Used for data-driven inline styles. */
 export const SOFT: Record<ItemKind, string> = {
   attraction: "#F6E7DC",
   meal: "#DDEFE5",
@@ -24,7 +24,7 @@ export const SOFT: Record<ItemKind, string> = {
   other: "#EFEAE0",
 };
 
-/** Contact chip colours. */
+/** Contact chip colours. Used for data-driven inline styles. */
 export const CONTACT_COLOR: Record<ContactKind, string> = {
   emergency: "#C0392B",
   family: "#2F7D5B",
@@ -33,133 +33,42 @@ export const CONTACT_COLOR: Record<ContactKind, string> = {
   other: "#8A8175",
 };
 
-/** Shared surface/control styles, ported from the prototype's `ui` object. */
-export const ui = {
-  app: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    background: "#FBF8F3",
-    color: INK,
-    fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
-    position: "relative",
-    overflow: "hidden",
-    WebkitFontSmoothing: "antialiased",
-  } satisfies CSSProperties,
-  header: { padding: "54px 18px 0", background: "#FBF8F3", flexShrink: 0 } satisfies CSSProperties,
-  body: {
-    flex: 1,
-    overflowY: "auto",
-    overflowX: "hidden",
-    touchAction: "pan-y",
-    WebkitOverflowScrolling: "touch",
-  } satisfies CSSProperties,
-  card: {
-    background: "#fff",
-    borderRadius: 20,
-    border: "1px solid #EFE8DD",
-    boxShadow: "0 6px 18px rgba(80,55,25,0.05)",
-  } satisfies CSSProperties,
-  padCard: {
-    background: "#fff",
-    borderRadius: 20,
-    border: "1px solid #EFE8DD",
-    boxShadow: "0 6px 18px rgba(80,55,25,0.05)",
-    padding: 18,
-  } satisfies CSSProperties,
-  cardRow: {
-    background: "#fff",
-    borderRadius: 18,
-    border: "1px solid #EFE8DD",
-    boxShadow: "0 4px 14px rgba(80,55,25,0.05)",
-    padding: 15,
-    display: "flex",
-    gap: 14,
-    alignItems: "center",
-    cursor: "pointer",
-    marginBottom: 12,
-  } satisfies CSSProperties,
-  listCard: {
-    background: "#fff",
-    borderRadius: 18,
-    border: "1px solid #EFE8DD",
-    boxShadow: "0 4px 14px rgba(80,55,25,0.05)",
-    overflow: "hidden",
-  } satisfies CSSProperties,
-  chevBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    border: "1px solid #ECE4D8",
-    background: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    flexShrink: 0,
-    boxShadow: "0 2px 8px rgba(80,55,25,0.06)",
-  } satisfies CSSProperties,
-  btnPrimary: {
-    height: 56,
-    borderRadius: 16,
-    background: "#C2541F",
-    color: "#fff",
-    border: "none",
-    fontFamily: "inherit",
-    fontSize: 18,
-    fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
-    boxShadow: "0 10px 24px rgba(194,84,31,0.3)",
-  } satisfies CSSProperties,
-  btnGhost: {
-    height: 54,
-    borderRadius: 16,
-    background: "#fff",
-    color: INK,
-    border: "1px solid #E3DACB",
-    fontFamily: "inherit",
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
-  } satisfies CSSProperties,
-  input: {
-    width: "100%",
-    height: 54,
-    borderRadius: 14,
-    border: "1px solid #E2DACC",
-    background: "#fff",
-    padding: "0 16px",
-    fontFamily: "inherit",
-    fontSize: 17,
-    color: INK,
-    boxSizing: "border-box",
-    outline: "none",
-  } satisfies CSSProperties,
-  tabbar: {
-    flexShrink: 0,
-    display: "flex",
-    borderTop: "1px solid #EDE6DB",
-    background: "rgba(251,248,243,0.97)",
-    paddingBottom: 26,
-    paddingTop: 9,
-  } satisfies CSSProperties,
-};
+/** Resolve a contact's dot colour: admin override first, then the kind default. */
+export const contactColor = (c: Contact): string =>
+  c.color ?? CONTACT_COLOR[c.kind] ?? "#8A8175";
 
-/** Segmented-control pill style (layout switcher, editor tabs). */
-export function seg(on: boolean): CSSProperties {
-  return {
-    flex: 1,
-    textAlign: "center",
-    padding: "9px 0",
-    borderRadius: 11,
-    fontSize: 13.5,
-    fontWeight: 700,
-    cursor: "pointer",
-    background: on ? "#fff" : "transparent",
-    color: on ? INK : "#9A9183",
-    boxShadow: on ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
-    transition: "all .15s",
-  };
+/**
+ * Shared surface/control class strings, ported from the prototype's `ui` object.
+ * Combine with overrides via `cn(ui.card, "mb-4")` so conflicting utilities
+ * resolve correctly.
+ */
+export const ui = {
+  app: "relative flex h-full flex-col overflow-hidden bg-app-bg font-sans text-ink antialiased",
+  header:
+    "shrink-0 bg-app-bg px-[18px] pt-[max(env(safe-area-inset-top),14px)]",
+  body: "flex-1 touch-pan-y overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch]",
+  card: "rounded-xl border border-border bg-surface shadow-card",
+  padCard: "rounded-xl border border-border bg-surface p-[18px] shadow-card",
+  cardRow:
+    "mb-3 flex cursor-pointer items-center gap-[14px] rounded-lg border border-border bg-surface p-[15px] shadow-soft",
+  chevBtn:
+    "flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center rounded-[16px] border border-[#ece4d8] bg-surface shadow-[0_2px_8px_rgba(80,55,25,0.06)]",
+  btnPrimary:
+    "h-[56px] w-full cursor-pointer rounded-[16px] border-none bg-accent text-[18px] font-bold text-white shadow-accent",
+  btnGhost:
+    "h-[54px] w-full cursor-pointer rounded-[16px] border border-[#e3dacb] bg-surface text-[16px] font-bold text-ink",
+  input:
+    "h-[54px] w-full rounded-md border border-border-strong bg-surface px-4 text-[17px] text-ink outline-none",
+  tabbar:
+    "flex shrink-0 border-t border-[#ede6db] bg-[rgba(251,248,243,0.97)] pt-[6px] pb-[max(env(safe-area-inset-bottom),8px)]",
+} as const;
+
+/** Segmented-control pill classes (editor tabs). */
+export function seg(on: boolean): string {
+  return cn(
+    "flex-1 cursor-pointer rounded-[11px] py-[9px] text-center text-[13.5px] font-bold transition-all duration-150",
+    on
+      ? "bg-surface text-ink shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+      : "bg-transparent text-[#9a9183] shadow-none",
+  );
 }

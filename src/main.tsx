@@ -2,6 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import "./styles/global.css";
+// Imported for its side effect: starts buffering `beforeinstallprompt` at load,
+// before React mounts, so the custom install button can offer it later.
+import "./lib/pwaInstall";
 import App from "./App.tsx";
 
 // Register the service worker (auto-updates in the background). Bundled into our

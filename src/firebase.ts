@@ -1,6 +1,10 @@
 import { initializeApp, type FirebaseOptions } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 
 /**
  * Firebase configuration is read from Vite env vars (`VITE_FIREBASE_*`).
@@ -31,7 +35,24 @@ if (missing.length > 0) {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+/**
+ * Persist Firestore data in IndexedDB so trips stay readable offline: once a
+ * trip has been opened online, `onSnapshot` serves it straight from the local
+ * cache when the network is down. The traveler view (a shareable PWA) relies on
+ * this to keep working in flight mode, tunnels, or anywhere with no signal.
+ *
+ * Persistence needs IndexedDB. Where it is unavailable (Node test runs, private
+ * browsing in some engines) we fall back to the default in-memory cache so the
+ * app still loads instead of throwing at startup. The multi-tab manager keeps a
+ * single shared cache consistent across the admin app's tabs.
+ */
+const localCache =
+  typeof indexedDB !== "undefined"
+    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    : undefined;
+
+export const db = initializeFirestore(app, localCache ? { localCache } : {});
 
 // Firebase AI Logic is created lazily in src/lib/ai.ts via a dynamic import,
 // so its (sizeable) code stays out of the initial bundle until "Ask AI" runs.

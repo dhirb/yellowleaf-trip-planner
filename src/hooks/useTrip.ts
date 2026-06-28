@@ -10,7 +10,11 @@ interface TripState {
 
 /** Live single-trip subscription (read-only — used by the traveler view). */
 export function useTrip(id: string | undefined): TripState {
-  const [state, setState] = useState<TripState>({ trip: null, loading: true, error: null });
+  const [state, setState] = useState<TripState>({
+    trip: null,
+    loading: true,
+    error: null,
+  });
 
   useEffect(() => {
     if (!id) {

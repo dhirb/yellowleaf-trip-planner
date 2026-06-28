@@ -1,38 +1,35 @@
 import { useState } from "react";
-import {
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../firebase";
 import { authErrorMessage } from "../../lib/authErrors";
+import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
 
-type Mode = "signin" | "signup";
+interface LoginScreenProps {
+  /** Navigate to the standalone password-reset screen. */
+  onForgotPassword: () => void;
+}
 
-/** Admin email/password sign-in and self-serve account creation. */
-export function LoginScreen() {
-  const [mode, setMode] = useState<Mode>("signin");
+/**
+ * Admin email/password sign-in. Accounts are created out-of-band by the
+ * provisioning script (`npm run provision`), not self-serve, so there is no
+ * sign-up flow here.
+ */
+export function LoginScreen({ onForgotPassword }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setError("");
-    setNotice("");
     if (!email.trim() || !pass.trim()) {
       setError("Enter your email and password to continue.");
       return;
     }
     setBusy(true);
     try {
-      if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      } else {
-        await signInWithEmailAndPassword(auth, email.trim(), pass);
-      }
+      await signInWithEmailAndPassword(auth, email.trim(), pass);
       // onAuthStateChanged in AuthProvider takes over from here.
     } catch (err: unknown) {
       setError(authErrorMessage(err));
@@ -41,97 +38,80 @@ export function LoginScreen() {
     }
   };
 
-  const resetPassword = async () => {
-    setError("");
-    setNotice("");
-    if (!email.trim()) {
-      setError("Enter your email first, then tap reset.");
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, email.trim());
-      setNotice("Password reset email sent. Check your inbox.");
-    } catch (err: unknown) {
-      setError(authErrorMessage(err));
-    }
-  };
-
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 30px", background: "#FBF8F3" }}>
-      <div
-        style={{
-          width: 60,
-          height: 60,
-          borderRadius: 18,
-          background: "#1F1B16",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 24,
-        }}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <path d="M5 19V8l7-4 7 4v11" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M9 19v-5h6v5" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M3 19h18" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+    <div className="flex h-full flex-col justify-center bg-app-bg px-[30px] py-10">
+      <div className="mb-6 self-center">
+        {/* Yellowleaf brand mark — kept in sync with public/favicon.svg */}
+        <svg
+          width="60"
+          height="60"
+          viewBox="0 0 64 64"
+          role="img"
+          aria-label="Yellowleaf"
+        >
+          <rect width="64" height="64" rx="16" fill="#C2541F" />
+          <path
+            d="M44 16c-14 0-26 9-26 24 0 3 .7 6 1.9 8.5C24 38 31 31 41 27c-8 5.5-14 13-16.5 22.4C38 51 48 41 48 26c0-4-1.4-7.4-4-10z"
+            fill="#F3EDE2"
+          />
+          <path
+            d="M20 50C24 36 33 28 44 24"
+            stroke="#C2541F"
+            strokeWidth="2.4"
+            fill="none"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px" }}>Itinerary Studio</div>
-      <div style={{ fontSize: 16, color: "#8A8175", fontWeight: 500, marginTop: 4 }}>
-        {mode === "signin" ? "Sign in to manage your trips" : "Create an account to start planning"}
+      <div className="text-[16px] font-medium text-muted">
+        Sign in to manage your trips
       </div>
 
-      <div style={{ marginTop: 28 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#6B635A", marginBottom: 7 }}>Email</div>
+      <div className="mt-7">
+        <div className="mb-[7px] text-[13px] font-bold text-ink-dim">Email</div>
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
           type="email"
           autoComplete="email"
-          style={ui.input}
+          className={ui.input}
         />
       </div>
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#6B635A", marginBottom: 7 }}>Password</div>
+      <div className="mt-4">
+        <div className="mb-[7px] text-[13px] font-bold text-ink-dim">
+          Password
+        </div>
         <input
           type="password"
           value={pass}
           onChange={(e) => setPass(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="••••••••"
-          autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          style={ui.input}
+          autoComplete="current-password"
+          className={ui.input}
         />
       </div>
 
-      <div style={{ color: error ? "#C0392B" : "#2F7D5B", fontSize: 14, fontWeight: 600, minHeight: 20, marginTop: 10 }}>
-        {error || notice}
+      <div className="mt-[10px] min-h-5 text-[14px] font-semibold text-danger">
+        {error}
       </div>
 
-      <button onClick={submit} disabled={busy} style={{ ...ui.btnPrimary, opacity: busy ? 0.7 : 1 }}>
-        {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+      <button
+        onClick={submit}
+        disabled={busy}
+        className={cn(ui.btnPrimary, busy ? "opacity-70" : "opacity-100")}
+      >
+        {busy ? "Please wait…" : "Sign in"}
       </button>
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18 }}>
+      <div className="mt-[18px] flex justify-end">
         <button
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setError("");
-            setNotice("");
-          }}
-          style={{ background: "none", border: "none", color: "#C2541F", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+          onClick={onForgotPassword}
+          className="cursor-pointer bg-transparent p-0 text-[13.5px] font-bold text-fainter"
         >
-          {mode === "signin" ? "Create an account" : "I already have an account"}
+          Forgot password?
         </button>
-        {mode === "signin" && (
-          <button
-            onClick={resetPassword}
-            style={{ background: "none", border: "none", color: "#B0A693", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-          >
-            Forgot password?
-          </button>
-        )}
       </div>
     </div>
   );

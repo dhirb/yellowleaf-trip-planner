@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type { Item, Lang } from "../src/types";
-import { pickItemFields, sanitizeTranslations } from "../src/lib/ai";
+import {
+  pickItemFields,
+  sanitizeTranslations,
+  translateField,
+} from "../src/lib/ai";
 
 describe("pickItemFields", () => {
   it("returns only non-empty translatable fields", () => {
@@ -58,5 +62,19 @@ describe("sanitizeTranslations", () => {
   it("returns {} for non-object input", () => {
     expect(sanitizeTranslations(null, langs, fields)).toEqual({});
     expect(sanitizeTranslations("nope", langs, fields)).toEqual({});
+  });
+});
+
+describe("translateField", () => {
+  const langs: Lang[] = [{ code: "ja", label: "日本語" }];
+
+  it("short-circuits to {} for a blank value without calling the model", async () => {
+    await expect(translateField("title", "   ", langs)).resolves.toEqual({});
+  });
+
+  it("short-circuits to {} when there are no target languages", async () => {
+    await expect(translateField("title", "Kinkaku-ji", [])).resolves.toEqual(
+      {},
+    );
   });
 });

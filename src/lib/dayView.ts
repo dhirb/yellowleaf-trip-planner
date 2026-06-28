@@ -1,24 +1,29 @@
 import type { Day, Item } from "../types";
 import { ACC, SOFT } from "./ui";
-import { fallbackImage } from "./ids";
 import { localizeItem } from "./localize";
+import { safeImageUrl } from "./url";
 
 export interface ViewItem {
   item: Item;
   index: number;
   title: string;
   place: string;
-  thumb: string;
+  /** Activity image URL, or null when the item has no thumbnail. */
+  thumb: string | null;
   accent: string;
   soft: string;
   tag: string;
   isLast: boolean;
 }
 
-/** Image for an item, falling back to a deterministic placeholder. */
-export function imgFor(item: Item, w = 320, h = 240): string {
-  const url = item.image?.trim();
-  return url ? url : fallbackImage(item.title, w, h);
+/**
+ * The item's image URL, or null when none is set or it is not a safe `https:`
+ * URL. Every render path (day list thumbnails, detail banner, admin preview)
+ * goes through here, so sanitising at this chokepoint keeps unsafe values out
+ * of the CSS `url("...")` backgrounds they feed.
+ */
+export function imgFor(item: Item): string | null {
+  return safeImageUrl(item.image);
 }
 
 /**

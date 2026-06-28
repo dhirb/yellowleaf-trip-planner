@@ -1,13 +1,6 @@
 import { app } from "../firebase";
 import { searchActivityImage } from "./imageSearch";
-import type {
-  Item,
-  ItemTranslation,
-  Lang,
-  Stay,
-  StayTranslation,
-  DayTranslation,
-} from "../types";
+import type { Item, ItemTranslation, Lang } from "../types";
 
 /**
  * Admin "Ask AI" assist, powered by Firebase AI Logic (Gemini Developer API backend).
@@ -118,7 +111,12 @@ async function translateFields(
     getAiInstance(),
   ]);
 
-  const model = getGenerativeModel(ai, { model: TRANSLATE_MODEL });
+  // JSON mode forces a bare JSON object back, so the model can't wrap the
+  // result in prose or markdown fences that would defeat JSON.parse below.
+  const model = getGenerativeModel(ai, {
+    model: TRANSLATE_MODEL,
+    generationConfig: { responseMimeType: "application/json" },
+  });
 
   const prompt =
     `Translate these travel itinerary fields into the target languages. ` +
@@ -172,6 +170,31 @@ export function sanitizeTranslations(
   return out;
 }
 
+/**
+ * Translate a single field's value into every target language. Returns a flat
+ * map of language code → translated string (only languages the model returned a
+ * usable value for). Resolves to {} without an API call when the value is blank.
+ *
+ * This powers the per-field "Translate with AI" button in the edit sheet; it
+ * reuses {@link translateFields} so sanitisation and prompting stay in one place.
+ */
+export async function translateField(
+  field: string,
+  value: string,
+  langs: Lang[],
+  context?: string,
+): Promise<Record<string, string>> {
+  const v = value.trim();
+  if (!v) return {};
+  const map = await translateFields({ [field]: v }, langs, context);
+  const out: Record<string, string> = {};
+  for (const code of Object.keys(map)) {
+    const fv = map[code][field];
+    if (typeof fv === "string") out[code] = fv;
+  }
+  return out;
+}
+
 /** Translate an activity's fields into every target language. */
 export async function translateItem(
   item: Item,
@@ -181,32 +204,5 @@ export async function translateItem(
   return (await translateFields(pickItemFields(item), langs, dest)) as Record<
     string,
     ItemTranslation
-  >;
-}
-
-/** Translate an accommodation's name + description into every target language. */
-export async function translateStay(
-  stay: Stay,
-  langs: Lang[],
-): Promise<Record<string, StayTranslation>> {
-  const fields: Record<string, string> = {};
-  if (stay.name?.trim()) fields.name = stay.name.trim();
-  if (stay.desc?.trim()) fields.desc = stay.desc.trim();
-  return (await translateFields(fields, langs)) as Record<
-    string,
-    StayTranslation
-  >;
-}
-
-/** Translate a day theme into every target language. */
-export async function translateDayTheme(
-  theme: string,
-  langs: Lang[],
-): Promise<Record<string, DayTranslation>> {
-  const t = theme.trim();
-  if (!t) return {};
-  return (await translateFields({ theme: t }, langs)) as Record<
-    string,
-    DayTranslation
   >;
 }

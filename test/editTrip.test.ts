@@ -6,6 +6,14 @@ import {
   removeTripLanguage,
   setItemTranslations,
   setDayTranslations,
+  addCoOwner,
+  removeCoOwner,
+  isValidEmail,
+  addLayover,
+  updateLayover,
+  delLayover,
+  updateFlight,
+  updateStay,
 } from "../src/lib/editTrip";
 
 const currency: Currency = {
@@ -25,8 +33,6 @@ function fixture(): Trip {
     dest: "Tokyo",
     country: "Japan",
     cover: "#fff",
-    visibility: "public",
-    password: "",
     published: true,
     languages: [],
     currency,
@@ -49,14 +55,8 @@ function fixture(): Trip {
           { kind: "attraction", time: "11:00", title: "A2" },
         ],
         flights: [
-          { time: "07:00", flightNo: "F0", from: "", to: "", kind: "arrival" },
-          {
-            time: "20:00",
-            flightNo: "F1",
-            from: "",
-            to: "",
-            kind: "departure",
-          },
+          { arrTime: "07:00", flightNo: "F0", from: "", to: "" },
+          { depTime: "20:00", flightNo: "F1", from: "", to: "" },
         ],
       },
     ],
@@ -108,6 +108,97 @@ describe("moveFlight", () => {
 
   it("is a no-op when target index is out of range", () => {
     expect(flightNos(moveFlight(fixture(), 0, 1, 2))).toEqual(["F0", "F1"]);
+  });
+});
+
+describe("layover helpers", () => {
+  it("adds a layover to a flight, initialising the array", () => {
+    const t = addLayover(fixture(), 0, 0);
+    expect(t.days[0].flights[0].layovers).toEqual([
+      { airport: "", duration: "" },
+    ]);
+  });
+
+  it("appends additional layovers in order", () => {
+    let t = addLayover(fixture(), 0, 0);
+    t = addLayover(t, 0, 0);
+    t = updateLayover(t, 0, 0, 0, "airport", "HKG");
+    t = updateLayover(t, 0, 0, 1, "airport", "PVG");
+    expect(t.days[0].flights[0].layovers?.map((l) => l.airport)).toEqual([
+      "HKG",
+      "PVG",
+    ]);
+  });
+
+  it("updates a layover field", () => {
+    let t = addLayover(fixture(), 0, 0);
+    t = updateLayover(t, 0, 0, 0, "duration", "2h 15m");
+    expect(t.days[0].flights[0].layovers?.[0]).toEqual({
+      airport: "",
+      duration: "2h 15m",
+    });
+  });
+
+  it("removes a layover by index", () => {
+    let t = addLayover(fixture(), 0, 0);
+    t = addLayover(t, 0, 0);
+    t = updateLayover(t, 0, 0, 0, "airport", "HKG");
+    t = updateLayover(t, 0, 0, 1, "airport", "PVG");
+    t = delLayover(t, 0, 0, 0);
+    expect(t.days[0].flights[0].layovers?.map((l) => l.airport)).toEqual([
+      "PVG",
+    ]);
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = fixture();
+    const before = structuredClone(trip);
+    const next = addLayover(trip, 0, 0);
+    expect(trip).toEqual(before);
+    expect(next).not.toBe(trip);
+  });
+
+  it("returns the trip unchanged when updating a missing layover array", () => {
+    const base = fixture();
+    expect(updateLayover(base, 0, 0, 0, "airport", "HKG")).toBe(base);
+  });
+});
+
+describe("updateFlight", () => {
+  it("sets the optional note field", () => {
+    const t = updateFlight(fixture(), 0, 0, "note", "Terminal 2; long lines.");
+    expect(t.days[0].flights[0].note).toBe("Terminal 2; long lines.");
+  });
+
+  it("sets departure and arrival times independently", () => {
+    let t = updateFlight(fixture(), 0, 0, "depTime", "09:30");
+    t = updateFlight(t, 0, 0, "arrTime", "17:50");
+    expect(t.days[0].flights[0]).toMatchObject({
+      depTime: "09:30",
+      arrTime: "17:50",
+    });
+  });
+});
+
+describe("updateStay", () => {
+  it("sets address, phone, and note on a fresh stay", () => {
+    let t = updateStay(fixture(), 0, "name", "Orange Hotel");
+    t = updateStay(t, 0, "address", "解放北路960号");
+    t = updateStay(t, 0, "phone", "+86 20 1234 5678");
+    t = updateStay(t, 0, "note", "2 rooms, cash only.");
+    expect(t.days[0].stay).toMatchObject({
+      name: "Orange Hotel",
+      address: "解放北路960号",
+      phone: "+86 20 1234 5678",
+      note: "2 rooms, cash only.",
+    });
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = fixture();
+    const before = structuredClone(trip);
+    updateStay(trip, 0, "address", "somewhere");
+    expect(trip).toEqual(before);
   });
 });
 
@@ -168,5 +259,44 @@ describe("language helpers", () => {
     const base = fixture();
     addTripLanguage(base, { code: "ja", label: "日本語" });
     expect(base.languages).toEqual([]);
+  });
+});
+
+describe("co-owner helpers", () => {
+  it("validates email format", () => {
+    expect(isValidEmail("a@b.co")).toBe(true);
+    expect(isValidEmail("  a@b.co  ")).toBe(true);
+    expect(isValidEmail("nope")).toBe(false);
+    expect(isValidEmail("a@b")).toBe(false);
+    expect(isValidEmail("")).toBe(false);
+  });
+
+  it("adds a co-owner, normalising case and whitespace", () => {
+    const t = addCoOwner(fixture(), "  Friend@Example.COM ");
+    expect(t.coOwnerEmails).toEqual(["friend@example.com"]);
+  });
+
+  it("does not duplicate an existing co-owner regardless of case", () => {
+    let t = addCoOwner(fixture(), "friend@example.com");
+    t = addCoOwner(t, "FRIEND@example.com");
+    expect(t.coOwnerEmails).toEqual(["friend@example.com"]);
+  });
+
+  it("returns the trip unchanged for an invalid email", () => {
+    const base = fixture();
+    const t = addCoOwner(base, "not-an-email");
+    expect(t).toBe(base);
+  });
+
+  it("removes a co-owner, matching case-insensitively", () => {
+    let t = addCoOwner(fixture(), "friend@example.com");
+    t = removeCoOwner(t, "Friend@Example.com");
+    expect(t.coOwnerEmails).toEqual([]);
+  });
+
+  it("does not mutate the input trip", () => {
+    const base = fixture();
+    addCoOwner(base, "friend@example.com");
+    expect(base.coOwnerEmails).toBeUndefined();
   });
 });

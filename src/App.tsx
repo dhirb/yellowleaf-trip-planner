@@ -1,12 +1,18 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { PhoneFrame } from "./components/PhoneFrame";
+import { AppShell } from "./components/AppShell";
 
-const AdminApp = lazy(() => import("./components/admin/AdminApp").then((m) => ({ default: m.AdminApp })));
-const TravelerRoute = lazy(() => import("./components/traveler/TravelerRoute").then((m) => ({ default: m.TravelerRoute })));
+const AdminApp = lazy(() =>
+  import("./components/admin/AdminApp").then((m) => ({ default: m.AdminApp })),
+);
+const TravelerRoute = lazy(() =>
+  import("./components/traveler/TravelerRoute").then((m) => ({
+    default: m.TravelerRoute,
+  })),
+);
 
 const Loading = () => (
-  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#A89F92", fontWeight: 600, background: "#FBF8F3" }}>
+  <div className="flex h-full items-center justify-center bg-app-bg font-semibold text-faint">
     Loading…
   </div>
 );
@@ -14,7 +20,7 @@ const Loading = () => (
 function App() {
   return (
     <BrowserRouter>
-      <PhoneFrame>
+      <AppShell>
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route path="/admin" element={<AdminApp />} />
@@ -23,7 +29,7 @@ function App() {
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </Suspense>
-      </PhoneFrame>
+      </AppShell>
     </BrowserRouter>
   );
 }

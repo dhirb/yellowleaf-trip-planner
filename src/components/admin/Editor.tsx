@@ -5,21 +5,17 @@ import {
   generateActivityDescription,
   generateActivityImage,
   translateItem,
-  translateStay,
-  translateDayTheme,
 } from "../../lib/ai";
-import {
-  setItemContent,
-  setItemTranslations,
-  setStayTranslations,
-  setDayTranslations,
-} from "../../lib/editTrip";
+import { setItemContent, setItemTranslations } from "../../lib/editTrip";
 import type { ItemTranslation } from "../../types";
 import { softDeleteTrip } from "../../lib/trips";
 import { cn } from "../../lib/cn";
 import { ui, seg } from "../../lib/ui";
 import { DaysTab } from "./DaysTab";
 import { SettingsTab } from "./SettingsTab";
+import { ItemEditScreen } from "./ItemEditScreen";
+import { FlightEditScreen } from "./FlightEditScreen";
+import { StayEditScreen } from "./StayEditScreen";
 
 interface EditorProps {
   tripId: string;
@@ -29,6 +25,13 @@ interface EditorProps {
   /** Called after the trip has been deleted, to leave the editor. */
   onDeleted: () => void;
 }
+
+/** Which entity (if any) is open in a full-screen edit screen. */
+type Editing =
+  | { type: "item"; di: number; ii: number }
+  | { type: "flight"; di: number; fi: number }
+  | { type: "stay"; di: number }
+  | null;
 
 export function Editor({
   tripId,
@@ -41,7 +44,7 @@ export function Editor({
   const [tab, setTab] = useState<"days" | "settings">("days");
   const [adminDay, setAdminDay] = useState(0);
   const [aiBusyKey, setAiBusyKey] = useState("");
-  const [translateBusyKey, setTranslateBusyKey] = useState("");
+  const [editing, setEditing] = useState<Editing>(null);
 
   const { trip, loading, saving, update, set, publish } = editor;
 
@@ -96,7 +99,12 @@ export function Editor({
       }
       // No photo found → leave the thumbnail blank, don't overwrite an existing one.
       update((t) => {
-        let next = setItemContent(t, di, ii, image ? { note, image } : { note });
+        let next = setItemContent(
+          t,
+          di,
+          ii,
+          image ? { note, image } : { note },
+        );
         if (Object.keys(translations).length > 0) {
           next = setItemTranslations(next, di, ii, translations);
         }
@@ -110,53 +118,6 @@ export function Editor({
       );
     } finally {
       setAiBusyKey("");
-    }
-  };
-
-  const translateItemAt = async (di: number, ii: number) => {
-    const langs = trip.languages ?? [];
-    if (langs.length === 0) return;
-    setTranslateBusyKey(`i-${di}-${ii}`);
-    try {
-      const map = await translateItem(
-        trip.days[di].items[ii],
-        langs,
-        `${trip.dest}, ${trip.country}`,
-      );
-      update((t) => setItemTranslations(t, di, ii, map));
-    } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : "Translation failed.");
-    } finally {
-      setTranslateBusyKey("");
-    }
-  };
-
-  const translateStayAt = async (di: number) => {
-    const langs = trip.languages ?? [];
-    const stay = trip.days[di].stay;
-    if (langs.length === 0 || !stay) return;
-    setTranslateBusyKey(`s-${di}`);
-    try {
-      const map = await translateStay(stay, langs);
-      update((t) => setStayTranslations(t, di, map));
-    } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : "Translation failed.");
-    } finally {
-      setTranslateBusyKey("");
-    }
-  };
-
-  const translateDayAt = async (di: number) => {
-    const langs = trip.languages ?? [];
-    if (langs.length === 0) return;
-    setTranslateBusyKey(`d-${di}`);
-    try {
-      const map = await translateDayTheme(trip.days[di].theme, langs);
-      update((t) => setDayTranslations(t, di, map));
-    } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : "Translation failed.");
-    } finally {
-      setTranslateBusyKey("");
     }
   };
 
@@ -176,9 +137,49 @@ export function Editor({
     onDeleted();
   };
 
+  // A full-screen edit screen replaces the whole editor chrome while open.
+  const closeEditing = () => setEditing(null);
+  if (editing?.type === "item") {
+    return (
+      <ItemEditScreen
+        trip={trip}
+        di={editing.di}
+        ii={editing.ii}
+        update={update}
+        onBack={closeEditing}
+        onAskAI={askAI}
+        aiBusyKey={aiBusyKey}
+        saving={saving}
+      />
+    );
+  }
+  if (editing?.type === "flight") {
+    return (
+      <FlightEditScreen
+        trip={trip}
+        di={editing.di}
+        fi={editing.fi}
+        update={update}
+        onBack={closeEditing}
+        saving={saving}
+      />
+    );
+  }
+  if (editing?.type === "stay") {
+    return (
+      <StayEditScreen
+        trip={trip}
+        di={editing.di}
+        update={update}
+        onBack={closeEditing}
+        saving={saving}
+      />
+    );
+  }
+
   return (
     <div className="flex h-full flex-col bg-app-bg">
-      <div className="flex shrink-0 items-center gap-[10px] px-4 pt-[54px] pb-3">
+      <div className="flex shrink-0 items-center gap-[10px] px-4 pt-[max(env(safe-area-inset-top),14px)] pb-3">
         <button
           onClick={onBack}
           aria-label="Back to trips"
@@ -233,13 +234,9 @@ export function Editor({
             onPrevDay={() => goDay(adminDay - 1)}
             onNextDay={() => goDay(adminDay + 1)}
             update={update}
-            onAskAI={askAI}
-            aiBusyKey={aiBusyKey}
-            hasLanguages={(trip.languages ?? []).length > 0}
-            translateBusyKey={translateBusyKey}
-            onTranslateItem={translateItemAt}
-            onTranslateStay={translateStayAt}
-            onTranslateDay={translateDayAt}
+            onOpenItem={(di, ii) => setEditing({ type: "item", di, ii })}
+            onOpenFlight={(di, fi) => setEditing({ type: "flight", di, fi })}
+            onOpenStay={(di) => setEditing({ type: "stay", di })}
           />
         ) : (
           <SettingsTab

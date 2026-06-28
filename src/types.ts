@@ -1,6 +1,7 @@
 /** Domain types for the Yellowleaf trip planner. */
 
 export type ItemKind = "attraction" | "meal" | "stay" | "transport" | "other";
+/** Legacy flight direction — kept only to migrate old single-time flights. */
 export type FlightKind = "arrival" | "departure";
 export type ContactKind =
   | "emergency"
@@ -8,7 +9,6 @@ export type ContactKind =
   | "hotel"
   | "embassy"
   | "other";
-export type Visibility = "public" | "private";
 
 export interface Currency {
   code: string;
@@ -31,7 +31,7 @@ export type ItemTranslation = Partial<
   Pick<Item, "title" | "note" | "place" | "tag" | "tip">
 >;
 /** Per-language field overrides for a Stay. */
-export type StayTranslation = Partial<Pick<Stay, "name" | "desc">>;
+export type StayTranslation = Partial<Pick<Stay, "name" | "desc" | "note">>;
 /** Per-language field overrides for a Day. */
 export interface DayTranslation {
   theme?: string;
@@ -41,6 +41,8 @@ export interface Contact {
   label: string;
   value: string;
   kind: ContactKind;
+  /** Admin-chosen dot colour. Falls back to the kind's default when unset. */
+  color?: string;
 }
 
 export interface Phrase {
@@ -59,12 +61,26 @@ export interface Stay {
   t?: Record<string, StayTranslation>;
 }
 
+/** A connecting stop between a flight's origin and destination. */
+export interface Layover {
+  /** Free text, e.g. "Hong Kong (HKG)". */
+  airport: string;
+  /** Free text, e.g. "2h 15m". */
+  duration: string;
+}
+
 export interface Flight {
-  time: string;
   flightNo: string;
   from: string;
   to: string;
-  kind: FlightKind;
+  /** Departure time at the origin, "HH:MM". */
+  depTime?: string;
+  /** Arrival time at the destination, "HH:MM". */
+  arrTime?: string;
+  /** Optional connecting stops, in order from origin to destination. */
+  layovers?: Layover[];
+  /** Optional free-text detail (terminal, gate, baggage tips, etc.). */
+  note?: string;
 }
 
 export interface Item {
@@ -98,14 +114,24 @@ export interface Day {
 export interface Trip {
   id: string;
   ownerId: string;
+  /**
+   * Co-owners granted edit access, identified by their (lowercased) account
+   * email. They may edit trip content but not manage this list or delete the
+   * trip — only the original `ownerId` can. Matched in Firestore rules against
+   * the signed-in user's `token.email`, so the person must already have an
+   * account.
+   */
+  coOwnerEmails?: string[];
   title: string;
   dest: string;
   country: string;
   /** Hex colour used for the trip's cover chip. */
   cover: string;
-  visibility: Visibility;
-  /** Access code for private trips (soft, client-side gate). */
-  password: string;
+  /**
+   * Whether the trip is shared. A draft (`false`) is readable only by its
+   * owner; once published (`true`) it is viewable by anyone who has the share
+   * link — the unguessable link is the access boundary (a capability URL).
+   */
   published: boolean;
   /** Added non-English languages. English is always the implicit base. */
   languages: Lang[];

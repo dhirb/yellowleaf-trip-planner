@@ -33,8 +33,6 @@ const kyoto: SeedTrip = {
   dest: "Kyoto",
   country: "Japan",
   cover: "#C2541F",
-  visibility: "public",
-  password: "kyoto",
   published: true,
   nativeLang: { code: "ja", label: "日本語" },
   currency: {
@@ -73,11 +71,11 @@ const kyoto: SeedTrip = {
       stay: granvia,
       flights: [
         {
-          time: "14:05",
           flightNo: "QF61",
           from: "Sydney (SYD)",
           to: "Osaka (KIX)",
-          kind: "arrival",
+          depTime: "09:20",
+          arrTime: "14:05",
         },
       ],
       items: [
@@ -324,11 +322,11 @@ const kyoto: SeedTrip = {
       stay: granvia,
       flights: [
         {
-          time: "16:30",
           flightNo: "QF62",
           from: "Osaka (KIX)",
           to: "Sydney (SYD)",
-          kind: "departure",
+          depTime: "16:30",
+          arrTime: "06:05",
         },
       ],
       items: [
@@ -364,8 +362,6 @@ const lisbon: SeedTrip = {
   dest: "Lisbon",
   country: "Portugal",
   cover: "#2F7D5B",
-  visibility: "private",
-  password: "pastel",
   published: false,
   nativeLang: { code: "pt", label: "Português" },
   currency: {
@@ -392,11 +388,11 @@ const lisbon: SeedTrip = {
       stay: avenida,
       flights: [
         {
-          time: "11:30",
           flightNo: "TP24",
           from: "Sydney (SYD)",
           to: "Lisbon (LIS)",
-          kind: "arrival",
+          depTime: "16:45",
+          arrTime: "11:30",
         },
       ],
       items: [
@@ -452,8 +448,6 @@ const hoian: SeedTrip = {
   dest: "Hội An",
   country: "Vietnam",
   cover: "#7A5AA6",
-  visibility: "public",
-  password: "lantern",
   published: true,
   nativeLang: { code: "vi", label: "Tiếng Việt" },
   currency: {
@@ -480,11 +474,11 @@ const hoian: SeedTrip = {
       stay: anantara,
       flights: [
         {
-          time: "13:20",
           flightNo: "VN960",
           from: "Sydney (SYD)",
           to: "Da Nang (DAD)",
-          kind: "arrival",
+          depTime: "09:10",
+          arrTime: "13:20",
         },
       ],
       items: [

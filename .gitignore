@@ -24,6 +24,11 @@ firestore-debug.log
 ui-debug.log
 *-debug.log
 
+# Firebase service-account keys (Admin SDK) — secrets, never commit
+serviceAccountKey.json
+*serviceAccount*.json
+*-service-account*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

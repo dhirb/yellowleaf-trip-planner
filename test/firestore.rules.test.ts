@@ -7,19 +7,25 @@ import {
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 const ADMIN_UID = "admin-1";
 const OTHER_ADMIN_UID = "admin-2";
 const NON_ADMIN_UID = "viewer-1";
+const CO_OWNER_UID = "admin-3";
+const CO_OWNER_EMAIL = "coowner@example.com";
 
 const rulesPath = fileURLToPath(new URL("../firestore.rules", import.meta.url));
 
@@ -36,8 +42,6 @@ function tripDoc(
     dest: "Kyoto",
     country: "Japan",
     cover: "#C2541F",
-    visibility: "public",
-    password: "",
     published: true,
     languages: [],
     currency: {
@@ -84,6 +88,19 @@ const otherAdmin = () =>
   testEnv.authenticatedContext(OTHER_ADMIN_UID, { role: "admin" }).firestore();
 const nonAdmin = () => testEnv.authenticatedContext(NON_ADMIN_UID).firestore();
 const anon = () => testEnv.unauthenticatedContext().firestore();
+// A provisioned admin granted co-owner access via their token email.
+const coOwner = () =>
+  testEnv
+    .authenticatedContext(CO_OWNER_UID, {
+      role: "admin",
+      email: CO_OWNER_EMAIL,
+    })
+    .firestore();
+// Same email, but not a provisioned admin (writes are still gated by isAdmin).
+const coOwnerNoRole = () =>
+  testEnv
+    .authenticatedContext(CO_OWNER_UID, { email: CO_OWNER_EMAIL })
+    .firestore();
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
@@ -192,6 +209,103 @@ describe("trips: create is restricted to provisioned admins acting as themselves
   it("a non-admin may not create a trip", async () => {
     await assertFails(
       setDoc(doc(nonAdmin(), "trips/new"), tripDoc(NON_ADMIN_UID)),
+    );
+  });
+});
+
+describe("trips: co-owners can edit content but not manage access", () => {
+  const shared = { coOwnerEmails: [CO_OWNER_EMAIL], published: false };
+
+  it("a co-owner can read a draft trip shared with them", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertSucceeds(getDoc(doc(coOwner(), "trips/t1")));
+  });
+
+  it("a co-owner can edit trip content", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertSucceeds(
+      updateDoc(doc(coOwner(), "trips/t1"), {
+        title: "Edited by co-owner",
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("a co-owner cannot change the co-owner list", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(
+      updateDoc(doc(coOwner(), "trips/t1"), { coOwnerEmails: [] }),
+    );
+  });
+
+  it("a co-owner cannot soft-delete the trip", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(
+      updateDoc(doc(coOwner(), "trips/t1"), { deletedAt: serverTimestamp() }),
+    );
+  });
+
+  it("a co-owner without the admin role cannot edit content", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(
+      updateDoc(doc(coOwnerNoRole(), "trips/t1"), { title: "Nope" }),
+    );
+  });
+
+  it("the owner can add and remove co-owners", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, { published: false }));
+    await assertSucceeds(
+      updateDoc(doc(admin(), "trips/t1"), {
+        coOwnerEmails: [CO_OWNER_EMAIL],
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("an admin who is neither owner nor co-owner cannot read a draft", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(getDoc(doc(otherAdmin(), "trips/t1")));
+  });
+
+  it("an admin who is neither owner nor co-owner cannot edit content", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(
+      updateDoc(doc(otherAdmin(), "trips/t1"), { title: "Nope" }),
+    );
+  });
+
+  // These mirror the two live queries in subscribeOwnerTrips. Query
+  // authorization is stricter than single-doc reads, so we exercise it directly.
+  it("the owner's ownerId query is authorized", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, { published: false }));
+    await assertSucceeds(
+      getDocs(
+        query(collection(admin(), "trips"), where("ownerId", "==", ADMIN_UID)),
+      ),
+    );
+  });
+
+  it("a co-owner's array-contains query on their own email is authorized", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(coOwner(), "trips"),
+          where("coOwnerEmails", "array-contains", CO_OWNER_EMAIL),
+        ),
+      ),
+    );
+  });
+
+  it("an array-contains query for someone else's email is denied", async () => {
+    await seed("trips/t1", tripDoc(ADMIN_UID, shared));
+    await assertFails(
+      getDocs(
+        query(
+          collection(coOwner(), "trips"),
+          where("coOwnerEmails", "array-contains", "stranger@example.com"),
+        ),
+      ),
     );
   });
 });

@@ -46,9 +46,8 @@ export function blankTrip(ownerId: string): TripData {
     dest: "New destination",
     country: "",
     cover: pickCover(Math.floor(Math.random() * 6)),
-    visibility: "private",
-    password: "",
     published: false,
+    coOwnerEmails: [],
     languages: [],
     currency: {
       code: "USD",
@@ -153,16 +152,73 @@ export function subscribeTrip(
   );
 }
 
-/** Live-subscribe to all trips owned by `uid`. */
+/**
+ * Live-subscribe to every trip the user can manage: those they own (`ownerId ==
+ * uid`) plus those shared with them as a co-owner (`coOwnerEmails` contains their
+ * email). Runs the two queries in parallel, dedupes by id, drops soft-deleted,
+ * and emits the union.
+ *
+ * The two queries are fault-isolated: the owned query is primary, so its failure
+ * is fatal (reported via `onError`). The co-owned query is best-effort — if it
+ * fails (e.g. rules not yet deployed, or a transient error) we log and fall back
+ * to showing owned trips, so a co-ownership hiccup can never hide trips you own.
+ */
 export function subscribeOwnerTrips(
   uid: string,
+  email: string | null,
   cb: (trips: Trip[]) => void,
   onError: (e: Error) => void,
 ) {
-  const q = query(collection(db, COLLECTION), where("ownerId", "==", uid));
-  return onSnapshot(
-    q,
-    (snap) => cb(snap.docs.map(toTrip).filter((t) => !t.deletedAt)),
+  const ownedQ = query(collection(db, COLLECTION), where("ownerId", "==", uid));
+  const sharedQ = email
+    ? query(
+        collection(db, COLLECTION),
+        where("coOwnerEmails", "array-contains", email),
+      )
+    : null;
+
+  let owned: Trip[] = [];
+  let shared: Trip[] = [];
+  let ownedReady = false;
+
+  // Emit as soon as owned trips are ready; co-owned trips merge in when they
+  // arrive. Never gate the owned list on the co-owned query.
+  const emit = () => {
+    if (!ownedReady) return;
+    const byId = new Map<string, Trip>();
+    for (const t of [...owned, ...shared]) {
+      if (!t.deletedAt) byId.set(t.id, t);
+    }
+    cb([...byId.values()]);
+  };
+
+  const unsubOwned = onSnapshot(
+    ownedQ,
+    (snap) => {
+      owned = snap.docs.map(toTrip);
+      ownedReady = true;
+      emit();
+    },
     (err) => onError(err),
   );
+  const unsubShared = sharedQ
+    ? onSnapshot(
+        sharedQ,
+        (snap) => {
+          shared = snap.docs.map(toTrip);
+          emit();
+        },
+        (err) => {
+          // Degrade gracefully: keep showing owned trips without co-owned ones.
+          console.warn("Co-owned trips unavailable:", err.message);
+          shared = [];
+          emit();
+        },
+      )
+    : null;
+
+  return () => {
+    unsubOwned();
+    unsubShared?.();
+  };
 }

@@ -107,11 +107,45 @@ export function updateFlight(
   trip: Trip,
   di: number,
   fi: number,
-  field: "time" | "flightNo" | "from" | "to",
+  field: "depTime" | "arrTime" | "flightNo" | "from" | "to" | "note",
   value: string,
 ): Trip {
   const next = clone(trip);
-  next.days[di].flights[fi][field] = value;
+  (next.days[di].flights[fi][field] as string) = value;
+  return next;
+}
+
+export function addLayover(trip: Trip, di: number, fi: number): Trip {
+  const next = clone(trip);
+  const flight = next.days[di].flights[fi];
+  if (!flight.layovers) flight.layovers = [];
+  flight.layovers.push({ airport: "", duration: "" });
+  return next;
+}
+
+export function updateLayover(
+  trip: Trip,
+  di: number,
+  fi: number,
+  li: number,
+  field: "airport" | "duration",
+  value: string,
+): Trip {
+  const next = clone(trip);
+  const layovers = next.days[di].flights[fi].layovers;
+  if (!layovers) return trip;
+  layovers[li][field] = value;
+  return next;
+}
+
+export function delLayover(
+  trip: Trip,
+  di: number,
+  fi: number,
+  li: number,
+): Trip {
+  const next = clone(trip);
+  next.days[di].flights[fi].layovers?.splice(li, 1);
   return next;
 }
 
@@ -119,11 +153,10 @@ export function addFlight(trip: Trip, di: number): Trip {
   const next = clone(trip);
   if (!next.days[di].flights) next.days[di].flights = [];
   next.days[di].flights.push({
-    time: "12:00",
     flightNo: "",
     from: "",
     to: "",
-    kind: "arrival",
+    depTime: "12:00",
   });
   return next;
 }
@@ -148,7 +181,7 @@ export function moveFlight(
 export function updateStay(
   trip: Trip,
   di: number,
-  field: "name" | "desc",
+  field: "name" | "desc" | "address" | "phone" | "note",
   value: string,
 ): Trip {
   const next = clone(trip);
@@ -158,10 +191,17 @@ export function updateStay(
   return next;
 }
 
+/** Remove a day's accommodation entirely. */
+export function clearStay(trip: Trip, di: number): Trip {
+  const next = clone(trip);
+  next.days[di].stay = null;
+  return next;
+}
+
 export function updateContact(
   trip: Trip,
   ci: number,
-  field: "label" | "value" | "kind",
+  field: "label" | "value" | "kind" | "color",
   value: string,
 ): Trip {
   const next = clone(trip);
@@ -186,13 +226,6 @@ export function moveContact(trip: Trip, from: number, to: number): Trip {
   const next = clone(trip);
   moveInArray(next.contacts, from, to);
   return next;
-}
-
-export function toggleVisibility(trip: Trip): Trip {
-  return {
-    ...trip,
-    visibility: trip.visibility === "public" ? "private" : "public",
-  };
 }
 
 /** Shift the whole trip so day 0 starts on `newStart`. */
@@ -238,6 +271,34 @@ function mergeT<V extends object>(
     out[code] = { ...(out[code] ?? {}), ...incoming[code] } as V;
   }
   return out;
+}
+
+/** Loose email check — good enough to reject obvious typos before storing. */
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+/**
+ * Grant a co-owner by email. Emails are normalised (trim + lowercase) so they
+ * match the signed-in user's token email. No-op (returns the input unchanged)
+ * when the email is invalid or already present — callers validate separately to
+ * surface a toast.
+ */
+export function addCoOwner(trip: Trip, email: string): Trip {
+  const normalized = email.trim().toLowerCase();
+  if (!isValidEmail(normalized)) return trip;
+  const current = trip.coOwnerEmails ?? [];
+  if (current.includes(normalized)) return trip;
+  return { ...trip, coOwnerEmails: [...current, normalized] };
+}
+
+/** Revoke a co-owner. Matches case-insensitively against the stored email. */
+export function removeCoOwner(trip: Trip, email: string): Trip {
+  const normalized = email.trim().toLowerCase();
+  return {
+    ...trip,
+    coOwnerEmails: (trip.coOwnerEmails ?? []).filter((e) => e !== normalized),
+  };
 }
 
 export function addTripLanguage(trip: Trip, lang: Lang): Trip {

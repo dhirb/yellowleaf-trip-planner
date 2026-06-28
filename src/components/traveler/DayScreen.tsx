@@ -1,13 +1,18 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type TransitionEvent as ReactTransitionEvent,
+} from "react";
 import type { Trip } from "../../types";
-import { bigDate, formatTime, type TimeFormat } from "../../lib/date";
-import { buildViewItems } from "../../lib/dayView";
-import { localizeStay, localizeDayTheme } from "../../lib/localize";
-import { ui } from "../../lib/ui";
-import { cn } from "../../lib/cn";
-import { BedDouble, ChevronLeft, ChevronRight, Plane, Sun } from "lucide-react";
-import { useSwipe } from "../../hooks/useSwipe";
-import { DayStrip } from "./DayStrip";
-import { DayItems } from "./DayItems";
+import type { TimeFormat } from "../../lib/date";
+import { DayView } from "./DayView";
+
+/** Min horizontal travel (px) before a release pages to the next/prev day. */
+const THRESHOLD = 70;
+/** Drag resistance when pulling past the first/last day (no neighbour to show). */
+const EDGE_RESISTANCE = 0.3;
 
 interface DayScreenProps {
   trip: Trip;
@@ -19,30 +24,15 @@ interface DayScreenProps {
   onPrevDay: () => void;
   onNextDay: () => void;
   onOpenItem: (index: number) => void;
+  onOpenFlight: (index: number) => void;
+  onOpenStay: () => void;
 }
 
-const SunIcon = () => <Sun size={16} color="#E08A1E" strokeWidth={2} />;
-
-const NavBtn = ({
-  dir,
-  onClick,
-}: {
-  dir: "left" | "right";
-  onClick: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    className={ui.chevBtn}
-    aria-label={dir === "left" ? "Previous day" : "Next day"}
-  >
-    {dir === "left" ? (
-      <ChevronLeft size={22} color="#7A6F60" strokeWidth={2.6} />
-    ) : (
-      <ChevronRight size={22} color="#7A6F60" strokeWidth={2.6} />
-    )}
-  </button>
-);
-
+/**
+ * Horizontal day pager. Renders the previous, current, and next day side by
+ * side so a neighbouring day previews in from the edge while you drag, then
+ * settles onto it once the swipe passes the threshold.
+ */
 export function DayScreen({
   trip,
   dayIndex,
@@ -53,132 +43,122 @@ export function DayScreen({
   onPrevDay,
   onNextDay,
   onOpenItem,
+  onOpenFlight,
+  onOpenStay,
 }: DayScreenProps) {
-  const day = trip.days[dayIndex] ?? trip.days[0];
-  const viewItems = buildViewItems(day, lang);
-  const swipe = useSwipe(onPrevDay, onNextDay);
+  const total = trip.days.length;
+  const hasPrev = dayIndex > 0;
+  const hasNext = dayIndex < total - 1;
 
-  const rawStay = day.stay ?? trip.hotel;
-  const stay = rawStay ? localizeStay(rawStay, lang) : null;
-  const stayName = stay?.name ?? "";
-  const staySub = stay?.desc ?? stay?.note ?? "";
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  // -1 = settling toward next, 1 = settling toward prev, 0 = at rest.
+  const [settle, setSettle] = useState(0);
+  // True for the single frame where we swap the day index, so the transform
+  // snap that accompanies the reindex doesn't animate.
+  const [instant, setInstant] = useState(false);
+  const startX = useRef(0);
+  const active = useRef(false);
+
+  // Re-enable transitions on the frame after an instant index swap.
+  useEffect(() => {
+    if (!instant) return;
+    const id = requestAnimationFrame(() => setInstant(false));
+    return () => cancelAnimationFrame(id);
+  }, [instant]);
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    if (settle !== 0) return; // ignore input mid-settle
+    startX.current = e.clientX;
+    active.current = true;
+    setDragging(true);
+    setDragX(0);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (!active.current) return;
+    let dx = e.clientX - startX.current;
+    if ((dx > 0 && !hasPrev) || (dx < 0 && !hasNext)) dx *= EDGE_RESISTANCE;
+    setDragX(dx);
+  };
+
+  const endDrag = () => {
+    if (!active.current) return;
+    active.current = false;
+    setDragging(false);
+    setDragX(0);
+    if (dragX <= -THRESHOLD && hasNext) setSettle(-1);
+    else if (dragX >= THRESHOLD && hasPrev) setSettle(1);
+  };
+
+  const cancelDrag = () => {
+    if (!active.current) return;
+    active.current = false;
+    setDragging(false);
+    setDragX(0);
+  };
+
+  const onTransitionEnd = (e: ReactTransitionEvent) => {
+    if (e.target !== e.currentTarget || e.propertyName !== "transform") return;
+    if (settle === -1) {
+      setInstant(true);
+      setSettle(0);
+      onNextDay();
+    } else if (settle === 1) {
+      setInstant(true);
+      setSettle(0);
+      onPrevDay();
+    }
+  };
+
+  // Render the current day plus any existing neighbours, keyed by absolute day
+  // index so the same DOM node (and its scroll) survives the reindex on commit.
+  const indices: number[] = [];
+  for (let i = dayIndex - 1; i <= dayIndex + 1; i++) {
+    if (i >= 0 && i < total) indices.push(i);
+  }
 
   return (
-    <>
-      <div className={ui.header}>
-        <div className="mb-4 flex items-start justify-between">
-          <div className="min-w-0">
-            <div className="text-[12px] font-extrabold uppercase tracking-[0.8px] text-accent">
-              {trip.dest}, {trip.country}
-            </div>
-            <div className="mt-[3px] overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-semibold text-muted">
-              {trip.title}
-            </div>
-          </div>
-          {day.weather && (
-            <div className="flex shrink-0 items-center gap-[6px] rounded-pill bg-accent-amber px-[12px] py-[7px] text-[14px] font-extrabold text-[#b5701a]">
-              <SunIcon />
-              {day.weather}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <NavBtn dir="left" onClick={onPrevDay} />
-          <div className="min-w-0 flex-1 text-center">
-            <div className="text-[27px] font-extrabold tracking-[-0.6px]">
-              {bigDate(day.date)}
-            </div>
-            <div className="mt-[2px] text-[14.5px] font-semibold text-muted">
-              Day {dayIndex + 1} of {trip.days.length} · {localizeDayTheme(day, lang)}
-            </div>
-          </div>
-          <NavBtn dir="right" onClick={onNextDay} />
-        </div>
-
-        <div className="mx-[-2px] mt-4">
-          <DayStrip
-            days={trip.days}
-            current={dayIndex}
-            today={today}
-            onSelect={onSelectDay}
-          />
-        </div>
-      </div>
-
+    <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg">
       <div
-        className={cn("no-scrollbar", ui.body)}
-        onPointerDown={swipe.onPointerDown}
-        onPointerMove={swipe.onPointerMove}
-        onPointerUp={swipe.onPointerUp}
-        onPointerLeave={swipe.onPointerUp}
-      >
-        <div
-          style={{
-            transform: `translateX(${swipe.dragX}px)`,
-            transition: swipe.dragging
+        className="absolute inset-0"
+        style={{
+          touchAction: "pan-y",
+          transform: `translateX(calc(${settle * 100}% + ${dragX}px))`,
+          transition:
+            dragging || instant
               ? "none"
               : "transform .28s cubic-bezier(.22,.61,.36,1)",
-          }}
-        >
-          <div className="px-[18px] pt-2 pb-[26px]">
-            {/* Flights */}
-            {(day.flights ?? []).map((f, i) => (
-              <div
-                key={i}
-                className="mb-[14px] flex items-center gap-[14px] rounded-lg border border-[#d2e3f0] bg-[#eaf2f9] p-[15px]"
-              >
-                <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md bg-flight shadow-[0_5px_12px_rgba(30,111,168,0.28)]">
-                  <Plane size={22} color="#fff" strokeWidth={2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px] font-extrabold uppercase tracking-[0.4px] text-[#2c6e9b]">
-                    Flight · {f.flightNo}
-                  </div>
-                  <div className="my-[2px] text-[18.5px] font-extrabold tracking-[-0.2px]">
-                    {f.kind === "departure" ? "Departs " : "Arrives "}
-                    {formatTime(f.time, timeFormat)}
-                  </div>
-                  <div className="text-[14.5px] font-semibold text-[#5c7c92]">
-                    {f.from} &nbsp;→&nbsp; {f.to}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <DayItems
-              items={viewItems}
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        onPointerCancel={cancelDrag}
+        onTransitionEnd={onTransitionEnd}
+      >
+        {indices.map((i) => (
+          <div
+            key={i}
+            className="absolute inset-0"
+            style={{ transform: `translateX(${(i - dayIndex) * 100}%)` }}
+          >
+            <DayView
+              trip={trip}
+              dayIndex={i}
+              today={today}
+              lang={lang}
               timeFormat={timeFormat}
-              onOpen={onOpenItem}
+              onSelectDay={onSelectDay}
+              onPrevDay={onPrevDay}
+              onNextDay={onNextDay}
+              onOpenItem={onOpenItem}
+              onOpenFlight={onOpenFlight}
+              onOpenStay={onOpenStay}
             />
-
-            {/* Accommodation */}
-            {stayName && (
-              <div
-                className={cn(
-                  ui.padCard,
-                  "mt-[18px] flex items-center gap-[14px]",
-                )}
-              >
-                <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-md bg-stay">
-                  <BedDouble size={22} color="#fff" strokeWidth={2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-extrabold uppercase tracking-[0.6px] text-faint">
-                    Where you're staying
-                  </div>
-                  <div className="mt-[2px] text-[17px] font-bold">
-                    {stayName}
-                  </div>
-                  <div className="mt-px text-[14px] font-medium text-muted">
-                    {staySub}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+        ))}
       </div>
-    </>
+    </div>
   );
 }

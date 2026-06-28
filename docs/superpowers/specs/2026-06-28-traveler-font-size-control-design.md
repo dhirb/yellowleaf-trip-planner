@@ -12,7 +12,7 @@ radii stay fixed.
 
 ## Constraints discovered
 
-- The traveler UI uses **~73 hardcoded pixel font sizes** (`text-[15px]`,
+- The traveler UI uses **~71 hardcoded pixel font sizes** (`text-[15px]`,
   `text-[27px]`, …) across **15 files** in `src/components/traveler/`, with
   **~19 distinct sizes** and **zero `rem`**. A root `font-size` change would
   therefore not affect any traveler text.
@@ -150,8 +150,8 @@ list, item detail, flight detail, stay detail, settings, help — assert:
 During implementation, grep for **px line-heights** (`leading-[Npx]`). A fixed
 px line-height does not grow with the font and would clip ascenders/descenders at
 larger scales. Any found are converted to unitless line-heights so they scale
-with the text. This is the most likely source of layout issues, so it is an
-explicit step.
+with the text. (Current count in `src/components/traveler/` is **zero**, so this
+is a defensive guard against regressions rather than a known fix.)
 
 ## Out of scope (YAGNI)
 

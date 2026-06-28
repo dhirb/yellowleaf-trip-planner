@@ -1,4 +1,12 @@
-:root {
+/**
+ * Design tokens, exposed to Tailwind v4 via `@theme`.
+ *
+ * Every value here both (a) emits a real CSS custom property on `:root`
+ * (so `var(--color-ink)` keeps working) and (b) generates matching utility
+ * classes (`bg-app-bg`, `text-ink`, `rounded-xl`, `shadow-card`, …).
+ * Keep this in sync with the palette in the original prototype.
+ */
+@theme {
   /* ── Surfaces ── */
   --color-backdrop-from: #f3ede2;
   --color-backdrop-mid: #e5ddcf;
@@ -6,10 +14,13 @@
   --color-app-bg: #fbf8f3;
   --color-surface: #ffffff;
   --color-surface-sunken: #f6f1e9;
+  /* Recurring sunken pill/control background used across controls. */
+  --color-control: #f3ece1;
 
   /* ── Ink ── */
   --color-ink: #1f1b16;
   --color-ink-soft: #443e36;
+  --color-ink-dim: #6b635a;
   --color-muted: #8a8175;
   --color-faint: #a89f92;
   --color-fainter: #b0a693;
@@ -43,9 +54,13 @@
 
   /* ── Motion ── */
   --ease-out-back: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --duration-fast: 0.15s;
-  --duration-normal: 0.28s;
 
   /* ── Type ── */
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+
+  /* ── Named animations (keyframes live in global.css) ── */
+  --animate-sheet-up: sheetUp 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  --animate-fade-in: fadeIn 0.2s ease;
+  --animate-toast-in: toastIn 0.25s ease;
+  --animate-spin-slow: spin 1s linear infinite;
 }

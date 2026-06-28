@@ -111,13 +111,17 @@ One document per trip in the `trips` collection; days/items/flights are embedded
 
 Security rules (`firestore.rules`):
 
-- **Read** — anyone may read a **published** trip (the public link, or a private trip whose
-  access code is checked client-side); owners may always read their own drafts.
-- **Create** — a signed-in user may create a trip only as themselves.
-- **Update/Delete** — only the trip's owner, and ownership can't be reassigned.
+- **Read** — anyone may read a **published, non-deleted** trip (the public link, or a private
+  trip whose access code is checked client-side); owners may always read their own drafts.
+- **Create** — only a provisioned **admin**, and only as themselves.
+- **Update** — only the trip's owning admin, and ownership can't be reassigned.
+- **Delete** — **forbidden for everyone** (`allow delete: if false`). Deletion is a _soft
+  delete_: the editor's "Delete trip" sets a `deletedAt` marker via an update, and the trip
+  then reads as missing in the list and the traveler view. The document is retained, so a
+  deleted trip can be recovered out-of-band if needed.
 
 > **Security note — private-trip access codes.** A private trip's `password` lives in the
-> trip document, so the access code is a *soft, client-side gate* (matching the original
+> trip document, so the access code is a _soft, client-side gate_ (matching the original
 > prototype), not cryptographic protection: anyone able to read a published private trip can
 > read its code. For stronger protection, move the gate server-side (e.g. a Cloud Function
 > that exchanges a code for the trip, with the code kept out of client-readable fields). That
@@ -156,8 +160,9 @@ launches full-screen like a native app.
   background and is registered CSP-safely from `src/main.tsx` (no inline script).
 
 **Installing:**
-- **Android / Chrome:** open the deployed site → menu → *Install app* / *Add to Home screen*.
-- **iOS / Safari:** open the site → Share → *Add to Home Screen*.
+
+- **Android / Chrome:** open the deployed site → menu → _Install app_ / _Add to Home screen_.
+- **iOS / Safari:** open the site → Share → _Add to Home Screen_.
 
 > Installability requires HTTPS, so test it on the deployed Firebase Hosting URL (service
 > workers also work on `http://localhost` for local checks). Icons live in `public/icons/`;
@@ -169,13 +174,48 @@ launches full-screen like a native app.
 `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and a `Content-Security-Policy`
 scoped to Firebase, Google Fonts, and the image hosts. Verify after deploy with `curl -I`.
 
+## Testing
+
+The Firestore security rules are covered by unit tests (`test/firestore.rules.test.ts`) that
+run against the Firestore emulator with [`@firebase/rules-unit-testing`](https://firebase.google.com/docs/rules/unit-tests).
+They assert the soft-delete contract end-to-end: hard deletes are rejected for everyone, the
+owning admin can soft-delete via an update, soft-deleted trips disappear from public reads, and
+the `users`/catch-all collections stay locked down.
+
+```bash
+npm test                  # boots the Firestore emulator, runs the rules tests once
+npm run test:watch        # same, in watch mode
+```
+
+> **Requires a JDK 21+** on `PATH` (the Firestore emulator launcher in firebase-tools needs it).
+> If your default `java` is older, point `JAVA_HOME` at a newer one for the run, e.g.
+> `JAVA_HOME=$(/usr/libexec/java_home -v 21+) npm test`.
+
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Vite dev server |
-| `npm run build` | Type-check + production build to `dist/` |
-| `npm run preview` | Preview the production build |
-| `npm run lint` | Oxlint |
-| `npm run emulators` | Firebase Auth/Firestore/Hosting emulators |
-| `npm run seed` | Optional: load the demo trips into Firestore |
+| Command              | Description                                       |
+| -------------------- | ------------------------------------------------- |
+| `npm run dev`        | Vite dev server                                   |
+| `npm run build`      | Type-check + production build to `dist/`          |
+| `npm run preview`    | Preview the production build                      |
+| `npm run lint`       | Oxlint                                            |
+| `npm test`           | Firestore rules tests on the emulator (Vitest)    |
+| `npm run test:watch` | Rules tests in watch mode                         |
+| `npm run emulators`  | Firebase Auth/Firestore/Hosting emulators         |
+| `npm run seed`       | Optional: load the demo trips into Firestore      |
+| `npm run build:airports` | Regenerate `public/airports.json` (see Credits) |
+
+## Airport data & credits
+
+The flight editor's airport search is powered by `public/airports.json`, generated
+by `npm run build:airports` (see `scripts/buildAirports.ts`) and refreshed monthly
+by the `Update airports data` GitHub Action. It merges two free, community-maintained
+sources:
+
+- **[OurAirports](https://ourairports.com/data/)** — base list and airport size
+  classification. Released into the **public domain**.
+- **[OpenFlights](https://openflights.org/data.html)** — served-city ("metro") names.
+  Licensed under the **[Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/)**;
+  any redistribution of this data must preserve attribution and remain open under ODbL.
+
+The attribution is also surfaced in-app at the foot of the airport suggestion list.

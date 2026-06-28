@@ -3,7 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const TOAST_MS = 2400;
 
 /** A single auto-dismissing toast message. */
-export function useToast(): { toast: string; showToast: (msg: string) => void } {
+export function useToast(): {
+  toast: string;
+  showToast: (msg: string) => void;
+} {
   const [toast, setToast] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 

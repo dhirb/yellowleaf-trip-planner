@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type { Day, Item, Stay } from "../src/types";
-import { localizeItem, localizeStay, localizeDayTheme } from "../src/lib/localize";
+import {
+  localizeItem,
+  localizeStay,
+  localizeDayTheme,
+} from "../src/lib/localize";
 
 const item: Item = {
   kind: "attraction",
@@ -40,11 +44,22 @@ describe("localizeItem", () => {
 });
 
 describe("localizeStay", () => {
-  const stay: Stay = { name: "Hotel Granvia", desc: "By the station", t: { ja: { name: "ホテルグランヴィア" } } };
+  const stay: Stay = {
+    name: "Hotel Granvia",
+    desc: "By the station",
+    note: "Cash only",
+    t: { ja: { name: "ホテルグランヴィア", note: "現金のみ" } },
+  };
   it("merges the translated name and keeps English desc", () => {
     const out = localizeStay(stay, "ja");
     expect(out.name).toBe("ホテルグランヴィア");
     expect(out.desc).toBe("By the station");
+  });
+  it("localizes the note when translated", () => {
+    expect(localizeStay(stay, "ja").note).toBe("現金のみ");
+  });
+  it("keeps the English note when no override exists", () => {
+    expect(localizeStay(stay, "fr").note).toBe("Cash only");
   });
   it("passes through for English", () => {
     expect(localizeStay(stay, "en")).toBe(stay);
@@ -52,7 +67,15 @@ describe("localizeStay", () => {
 });
 
 describe("localizeDayTheme", () => {
-  const day = { date: "2026-01-01", theme: "Arrival", weather: "", items: [], stay: null, flights: [], t: { ja: { theme: "到着" } } } as unknown as Day;
+  const day = {
+    date: "2026-01-01",
+    theme: "Arrival",
+    weather: "",
+    items: [],
+    stay: null,
+    flights: [],
+    t: { ja: { theme: "到着" } },
+  } as unknown as Day;
   it("returns the translated theme", () => {
     expect(localizeDayTheme(day, "ja")).toBe("到着");
   });

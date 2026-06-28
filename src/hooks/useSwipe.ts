@@ -1,4 +1,8 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 const THRESHOLD = 70;
 
@@ -14,7 +18,11 @@ interface SwipeHandlers {
  * Horizontal drag-to-page gesture. Reports live `dragX` for the rubber-band
  * transform and fires `onPrev`/`onNext` once a swipe passes the threshold.
  */
-export function useSwipe(onPrev: () => void, onNext: () => void, enabled = true): SwipeHandlers {
+export function useSwipe(
+  onPrev: () => void,
+  onNext: () => void,
+  enabled = true,
+): SwipeHandlers {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startX = useRef(0);

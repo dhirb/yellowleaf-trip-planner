@@ -1,9 +1,8 @@
+@import "tailwindcss";
 @import "./tokens.css";
 
-* {
-  box-sizing: border-box;
-}
-
+/* Tailwind's preflight already applies border-box + sensible resets. We only
+   layer on the few app-specific base rules the prototype relied on. */
 html,
 body,
 #root {
@@ -40,7 +39,29 @@ a {
   color: inherit;
 }
 
-/* ── Keyframes used by the traveler/admin surfaces ── */
+/* Native time pickers (flight + activity editors). Tint the WebKit clock
+   glyph to the app accent and keep the digits on-brand so the control reads
+   as part of the warm palette rather than a default browser widget. */
+input[type="time"] {
+  color: var(--color-ink);
+  accent-color: var(--color-accent);
+}
+input[type="time"]::-webkit-datetime-edit {
+  color: var(--color-ink);
+}
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  /* Recolor the default black glyph toward the accent brown (#c2541f). */
+  filter: invert(38%) sepia(64%) saturate(1500%) hue-rotate(346deg)
+    brightness(92%) contrast(90%);
+}
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ── Keyframes used by the traveler/admin surfaces (referenced by the
+   `--animate-*` tokens in tokens.css). ── */
 @keyframes sheetUp {
   from {
     transform: translateY(100%);

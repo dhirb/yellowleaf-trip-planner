@@ -1,24 +1,27 @@
 import { useState } from "react";
 import type { Trip } from "../../types";
 import { cn } from "../../lib/cn";
-import { ui } from "../../lib/ui";
+import { ui, contactColor } from "../../lib/ui";
 import { Button } from "../ui/Button";
+import { Select } from "../ui/Select";
 import { Plus, Trash2 } from "lucide-react";
-import { CONTACT_COLOR } from "../../lib/ui";
 import {
   addContact,
+  addCoOwner,
   addTripLanguage,
   delContact,
+  isValidEmail,
   moveContact,
+  removeCoOwner,
   removeTripLanguage,
   setTripEnd,
   setTripField,
   setTripStart,
-  toggleVisibility,
   updateContact,
 } from "../../lib/editTrip";
 import { LANGUAGE_PRESETS } from "../../lib/languages";
 import { ReorderControls } from "../ui/ReorderControls";
+import { useAuth } from "../../hooks/useAuth";
 
 interface SettingsTabProps {
   trip: Trip;
@@ -43,6 +46,14 @@ const Label = ({ children, mt = 0 }: { children: string; mt?: number }) => (
 const contactInput =
   "h-10 rounded-sm border border-border-strong bg-surface px-[10px] py-0 text-[14px] text-ink outline-none";
 
+const CONTACT_KIND_OPTIONS = [
+  { value: "emergency", label: "Emergency" },
+  { value: "family", label: "Family" },
+  { value: "hotel", label: "Hotel" },
+  { value: "embassy", label: "Embassy" },
+  { value: "other", label: "Other" },
+];
+
 export function SettingsTab({
   trip,
   update,
@@ -52,11 +63,32 @@ export function SettingsTab({
   onToast,
   onDelete,
 }: SettingsTabProps) {
+  const { user } = useAuth();
   const start = trip.days[0].date;
   const end = trip.days[trip.days.length - 1].date;
   const shareLink = `${window.location.origin}/t/${trip.id}`;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [coOwnerEmail, setCoOwnerEmail] = useState("");
+
+  // Only the original owner manages access; co-owners see the list read-only.
+  const isPrimaryOwner = trip.ownerId === user?.uid;
+  const coOwners = trip.coOwnerEmails ?? [];
+
+  const addCoOwnerEmail = () => {
+    const email = coOwnerEmail.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      onToast("Enter a valid email address.");
+      return;
+    }
+    if (coOwners.includes(email)) {
+      onToast("That person is already a co-owner.");
+      return;
+    }
+    update((t) => addCoOwner(t, email));
+    setCoOwnerEmail("");
+    onToast("Co-owner added");
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -122,59 +154,13 @@ export function SettingsTab({
         </div>
       </div>
 
-      {/* Visibility */}
-      <div className={cn(ui.padCard, "mb-4")}>
-        <Label>Who can view this trip</Label>
-        <button
-          onClick={() => update(toggleVisibility)}
-          className="flex w-full cursor-pointer items-center gap-[13px] bg-transparent p-0 text-left"
-        >
-          <div
-            className={cn(
-              "relative h-8 w-[52px] shrink-0 rounded-pill transition-colors duration-200",
-              trip.visibility === "public" ? "bg-meal" : "bg-[#d9cfbe]",
-            )}
-          >
-            <div
-              className="absolute top-[3px] h-[26px] w-[26px] rounded-full bg-surface shadow-[0_2px_5px_rgba(0,0,0,0.2)] transition-[left] duration-200"
-              style={{ left: trip.visibility === "public" ? 23 : 3 }}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[16.5px] font-bold">
-              {trip.visibility === "public"
-                ? "Public — anyone with the link"
-                : "Private — code required"}
-            </div>
-            <div className="mt-px text-[13.5px] font-medium leading-[1.4] text-muted">
-              {trip.visibility === "public"
-                ? "Travelers open the link directly. No code needed."
-                : "Travelers must enter the access code below to view."}
-            </div>
-          </div>
-        </button>
-        {trip.visibility === "private" && (
-          <div className="mt-4">
-            <div className="mb-[7px] text-[13px] font-bold text-ink-dim">
-              Access code
-            </div>
-            <input
-              value={trip.password}
-              onChange={(e) =>
-                update((t) => setTripField(t, "password", e.target.value))
-              }
-              className={cn(ui.input, "font-bold tracking-[0.5px]")}
-            />
-          </div>
-        )}
-      </div>
-
       {/* Languages */}
       <div className={cn(ui.padCard, "mb-4")}>
         <Label>Languages</Label>
         <div className="mb-3 text-[13.5px] font-medium leading-[1.45] text-muted">
-          English is always shown. Add languages travelers can switch to; activity and
-          accommodation text can then be translated from the itinerary editor.
+          English is always shown. Add languages travelers can switch to;
+          activity and accommodation text can then be translated from the
+          itinerary editor.
         </div>
         {(trip.languages ?? []).length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -195,30 +181,92 @@ export function SettingsTab({
             ))}
           </div>
         )}
-        <select
+        <Select
           value=""
-          onChange={(e) => {
-            const lang = LANGUAGE_PRESETS.find((l) => l.code === e.target.value);
+          ariaLabel="Add a language"
+          placeholder="Add a language…"
+          options={LANGUAGE_PRESETS.filter(
+            (p) => !(trip.languages ?? []).some((l) => l.code === p.code),
+          ).map((p) => ({ value: p.code, label: p.label }))}
+          onChange={(code) => {
+            const lang = LANGUAGE_PRESETS.find((l) => l.code === code);
             if (lang) update((t) => addTripLanguage(t, lang));
           }}
           className={cn(ui.input, "h-12 font-semibold")}
-        >
-          <option value="" disabled>
-            Add a language…
-          </option>
-          {LANGUAGE_PRESETS.filter(
-            (p) => !(trip.languages ?? []).some((l) => l.code === p.code),
-          ).map((p) => (
-            <option key={p.code} value={p.code}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        />
+      </div>
+
+      {/* Co-owners */}
+      <div className={cn(ui.padCard, "mb-4")}>
+        <Label>Co-owners</Label>
+        <div className="mb-3 text-[13.5px] font-medium leading-[1.45] text-muted">
+          {isPrimaryOwner
+            ? "Co-owners can edit this trip alongside you. Add them by the email on their account — they must already be able to sign in. Only you can manage this list or delete the trip."
+            : "These people can edit this trip. Only the trip's owner can change who has access."}
+        </div>
+        {coOwners.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {coOwners.map((email) => (
+              <span
+                key={email}
+                className="flex items-center gap-2 rounded-pill bg-control px-[12px] py-[7px] text-[13.5px] font-bold text-ink-dim"
+              >
+                {email}
+                {isPrimaryOwner && (
+                  <button
+                    onClick={() => update((t) => removeCoOwner(t, email))}
+                    aria-label={`Remove ${email}`}
+                    className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full bg-[#e3dacb]"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+        {isPrimaryOwner && (
+          <div className="flex items-center gap-[10px]">
+            <input
+              type="email"
+              value={coOwnerEmail}
+              onChange={(e) => setCoOwnerEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCoOwnerEmail();
+                }
+              }}
+              placeholder="name@example.com"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className={cn(ui.input, "h-12 min-w-0 flex-1 font-semibold")}
+            />
+            <button
+              onClick={addCoOwnerEmail}
+              className="flex h-12 shrink-0 cursor-pointer items-center rounded-[13px] bg-ink px-[18px] py-0 text-[14.5px] font-extrabold text-white"
+            >
+              Add
+            </button>
+          </div>
+        )}
+        {!isPrimaryOwner && coOwners.length === 0 && (
+          <div className="text-[13.5px] font-medium text-faint">
+            No co-owners yet.
+          </div>
+        )}
       </div>
 
       {/* Share link */}
       <div className={cn(ui.padCard, "mb-4")}>
         <Label>Share link</Label>
+        <div className="mb-3 text-[13.5px] font-medium leading-[1.45] text-muted">
+          Anyone with this link can open the trip once it&rsquo;s published. The
+          link is long and unguessable, so keep the trip private simply by
+          sharing it only with your travelers. Unpublished drafts aren&rsquo;t
+          viewable by anyone but you.
+        </div>
         <div className="flex items-center gap-[10px]">
           <div className="flex h-[50px] min-w-0 flex-1 items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-[13px] border border-[#ece4d8] bg-surface-sunken px-[14px] py-0 text-[15px] font-bold text-ink-dim">
             {shareLink}
@@ -241,17 +289,30 @@ export function SettingsTab({
             className="mb-[10px] rounded-md border border-[#ece4d8] bg-[#f8f4ed] p-[10px]"
           >
             <div className="mb-2 flex items-center gap-2">
-              <div
-                className="h-[13px] w-[13px] shrink-0 rounded-full"
-                style={{ background: CONTACT_COLOR[c.kind] ?? "#8A8175" }}
-              />
-              <input
-                value={c.label}
-                onChange={(e) =>
-                  update((t) => updateContact(t, ci, "label", e.target.value))
+              <label
+                className="relative h-[26px] w-[26px] shrink-0 cursor-pointer rounded-full border border-black/10"
+                style={{ background: contactColor(c) }}
+                title="Change colour"
+              >
+                <span className="sr-only">Contact colour</span>
+                <input
+                  type="color"
+                  value={contactColor(c)}
+                  onChange={(e) =>
+                    update((t) => updateContact(t, ci, "color", e.target.value))
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+              <Select
+                value={c.kind}
+                ariaLabel="Contact type"
+                wrapperClassName="min-w-0 flex-1"
+                options={CONTACT_KIND_OPTIONS}
+                onChange={(kind) =>
+                  update((t) => updateContact(t, ci, "kind", kind))
                 }
-                placeholder="Name"
-                className={cn(contactInput, "min-w-0 flex-1 font-bold")}
+                className={cn(contactInput, "w-full text-[16px] font-bold")}
               />
               <ReorderControls
                 canUp={ci > 0}
@@ -267,32 +328,22 @@ export function SettingsTab({
                 <Trash2 size={16} />
               </button>
             </div>
-            <div className="flex gap-2">
-              <input
-                value={c.value}
-                onChange={(e) =>
-                  update((t) => updateContact(t, ci, "value", e.target.value))
-                }
-                placeholder="Phone number"
-                className={cn(contactInput, "min-w-0 flex-1 font-semibold")}
-              />
-              <select
-                value={c.kind}
-                onChange={(e) =>
-                  update((t) => updateContact(t, ci, "kind", e.target.value))
-                }
-                className={cn(
-                  contactInput,
-                  "w-[120px] shrink-0 appearance-none px-2 text-[13.5px] font-bold",
-                )}
-              >
-                <option value="emergency">Emergency</option>
-                <option value="family">Family</option>
-                <option value="hotel">Hotel</option>
-                <option value="embassy">Embassy</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+            <input
+              value={c.label}
+              onChange={(e) =>
+                update((t) => updateContact(t, ci, "label", e.target.value))
+              }
+              placeholder="Name"
+              className={cn(contactInput, "mb-2 w-full font-bold")}
+            />
+            <input
+              value={c.value}
+              onChange={(e) =>
+                update((t) => updateContact(t, ci, "value", e.target.value))
+              }
+              placeholder="Phone number or URL"
+              className={cn(contactInput, "w-full font-semibold")}
+            />
           </div>
         ))}
         <button

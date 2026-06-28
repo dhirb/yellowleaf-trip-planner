@@ -73,8 +73,6 @@ export const chinaTrip: SeedTrip = {
   dest: "Guangzhou & Guangxi",
   country: "China",
   cover: "#B5701A",
-  visibility: "private",
-  password: "yangshuo",
   published: true,
   nativeLang: { code: "zh", label: "中文" },
   // Local CNY against a Malaysian-ringgit home (the group flies in/out of KUL).
@@ -97,11 +95,13 @@ export const chinaTrip: SeedTrip = {
       stay: guangzhouCentral,
       flights: [
         {
-          time: "17:50",
           flightNo: "CZ 350",
           from: "Kuala Lumpur (KUL)",
           to: "Guangzhou (CAN)",
-          kind: "arrival",
+          depTime: "13:55",
+          arrTime: "17:50",
+          layovers: [{ airport: "Shenzhen (SZX)", duration: "01:30" }],
+          note: "Terminal 2 at CAN. Have the hotel address ready for the arrival card.",
         },
       ],
       items: [
@@ -573,11 +573,11 @@ export const chinaTrip: SeedTrip = {
       stay: null,
       flights: [
         {
-          time: "13:10",
           flightNo: "CZ 8301",
           from: "Guangzhou (CAN)",
           to: "Kuala Lumpur (KUL)",
-          kind: "departure",
+          depTime: "13:10",
+          arrTime: "17:30",
         },
       ],
       items: [
