@@ -7,6 +7,8 @@ import {
   FONT_STEP_LABELS,
   type FontStep,
 } from "../../lib/fontScale";
+import { THEMES, THEME_LABELS } from "../../lib/theme";
+import { useTheme } from "../../hooks/useTheme";
 import { ui } from "../../lib/ui";
 import { cn } from "../../lib/cn";
 
@@ -64,6 +66,7 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   const [conv, setConv] = useState(5000);
   const [curSel, setCurSel] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
 
   const currencies = collectCurrencies(trip);
   const todayIdx = trip.days.findIndex((d) => d.date === todayISO());
@@ -157,6 +160,30 @@ export function SettingsScreen({
           </div>
           <div className="mt-[10px] text-caption font-semibold leading-[1.4] text-faint">
             Makes all text larger for easier reading.
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div className={cn(ui.padCard, "mb-4")}>
+          <Label>Appearance</Label>
+          <div className="flex gap-[7px]">
+            {THEMES.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={cn(
+                  "flex-1 cursor-pointer rounded-[12px] px-0 py-3 text-center text-body font-bold",
+                  theme === t
+                    ? "bg-accent text-white"
+                    : "bg-control text-ink-dim",
+                )}
+              >
+                {THEME_LABELS[t]}
+              </button>
+            ))}
+          </div>
+          <div className="mt-[10px] text-caption font-semibold leading-[1.4] text-faint">
+            System follows your device's light or dark setting.
           </div>
         </div>
 

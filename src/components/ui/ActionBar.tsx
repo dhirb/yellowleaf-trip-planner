@@ -23,13 +23,13 @@ export function ActionBar({
   deleteLabel = "Delete",
 }: ActionBarProps) {
   return (
-    <div className="mt-[10px] flex items-center justify-between border-t border-[#efe7da] pt-[10px]">
+    <div className="mt-[10px] flex items-center justify-between border-t border-border pt-[10px]">
       {reorder ? <ReorderControls {...reorder} /> : <span />}
       <button
         type="button"
         onClick={onDelete}
         aria-label={deleteLabel}
-        className="flex h-10 shrink-0 cursor-pointer items-center gap-[6px] rounded-[11px] bg-[#fbeeec] px-[14px] text-[13.5px] font-bold text-[#b4453a] transition touch-manipulation hover:bg-[#f7e2df] active:scale-95"
+        className="flex h-10 shrink-0 cursor-pointer items-center gap-[6px] rounded-[11px] bg-danger-soft px-[14px] text-[13.5px] font-bold text-danger transition touch-manipulation hover:bg-danger/15 active:scale-95"
       >
         <Trash2 size={16} />
         {deleteLabel}

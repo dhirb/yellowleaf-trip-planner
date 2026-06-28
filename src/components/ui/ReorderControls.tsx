@@ -39,7 +39,7 @@ export function ReorderControls({
         className={cn(
           btnBase,
           canUp
-            ? "cursor-pointer hover:bg-[#ece3d4] active:scale-95"
+            ? "cursor-pointer hover:bg-control active:scale-95"
             : "cursor-default opacity-40",
         )}
       >
@@ -53,7 +53,7 @@ export function ReorderControls({
         className={cn(
           btnBase,
           canDown
-            ? "cursor-pointer hover:bg-[#ece3d4] active:scale-95"
+            ? "cursor-pointer hover:bg-control active:scale-95"
             : "cursor-default opacity-40",
         )}
       >

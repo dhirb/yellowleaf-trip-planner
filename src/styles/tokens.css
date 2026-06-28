@@ -35,6 +35,18 @@
   --color-transport: #7a5aa6;
   --color-flight: #1e6fa8;
 
+  /* ── Soft category tints ──
+   * Light pastel fills for tag pills, the flight card and danger surfaces.
+   * Previously hardcoded inline / in arbitrary Tailwind classes; promoted to
+   * tokens so they flip to dark-desaturated fills under [data-theme="dark"]. */
+  --color-attraction-soft: #f6e7dc;
+  --color-meal-soft: #ddefe5;
+  --color-stay-soft: #e1e9f4;
+  --color-transport-soft: #ebe3f4;
+  --color-other-soft: #efeae0;
+  --color-flight-soft: #eaf2f9;
+  --color-danger-soft: #fbeeec;
+
   /* ── Lines & states ── */
   --color-border: #efe8dd;
   --color-border-strong: #e2dacc;
@@ -78,4 +90,67 @@
   --animate-fade-in: fadeIn 0.2s ease;
   --animate-toast-in: toastIn 0.25s ease;
   --animate-spin-slow: spin 1s linear infinite;
+}
+
+/* Enables `dark:` utilities, scoped to the resolved theme on <html>.
+   Token overrides below handle most of the work; `dark:` is for the rare
+   cosmetic one-off that has no semantic token. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ── Dark theme ──
+ * A `@theme` block only emits on `:root`, so the dark palette lives in this
+ * regular rule (specificity 0,1,1 beats the @theme-emitted 0,1,0). Every
+ * `bg-surface` / `text-ink` utility compiles to `var(--color-…)`, so flipping
+ * these variables repaints the whole app — admin and traveler alike.
+ *
+ * Warm charcoal (never pure black), warm off-white ink. Shadows are nearly
+ * invisible on dark, so elevation comes from surface lightness + hairline
+ * borders. Soft category tints become dark desaturated fills. Text values
+ * target WCAG AA against app-bg (#1a1611) / surface (#232019). */
+:root[data-theme="dark"] {
+  /* Surfaces */
+  --color-backdrop-from: #17130e;
+  --color-backdrop-mid: #120f0b;
+  --color-backdrop-to: #0d0b08;
+  --color-app-bg: #1a1611;
+  --color-surface: #232019;
+  --color-surface-sunken: #15120d;
+  --color-control: #2b271f;
+
+  /* Ink */
+  --color-ink: #f3ede2;
+  --color-ink-soft: #d8d0c4;
+  --color-ink-dim: #b3aa9c;
+  --color-muted: #a39a8c;
+  --color-faint: #8a8175;
+  --color-fainter: #756c61;
+
+  /* Brand & categories */
+  --color-accent: #d96a35;
+  --color-accent-soft: #3a2a1f;
+  --color-accent-amber: #33281b;
+  --color-attraction: #d96a35;
+  --color-meal: #4ca987;
+  --color-stay: #6f95cf;
+  --color-transport: #a78bd0;
+  --color-flight: #5aa3d6;
+
+  /* Soft category tints */
+  --color-attraction-soft: #3a2a1f;
+  --color-meal-soft: #1e3a30;
+  --color-stay-soft: #1f2e44;
+  --color-transport-soft: #2e2640;
+  --color-other-soft: #2b271f;
+  --color-flight-soft: #1b2a36;
+  --color-danger-soft: #3a1f1c;
+
+  /* Lines & states */
+  --color-border: #322d25;
+  --color-border-strong: #423b31;
+  --color-danger: #e5564a;
+
+  /* Shadows — dark drop instead of warm-brown tint */
+  --shadow-card: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 8px 22px rgba(0, 0, 0, 0.5);
 }

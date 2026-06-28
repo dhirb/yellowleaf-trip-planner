@@ -61,7 +61,7 @@ export function DetailScreen({
             strokeWidth={2}
             className="mt-px shrink-0"
           />
-          <div className="text-body font-semibold leading-[1.4] text-[#8a5a14]">
+          <div className="text-body font-semibold leading-[1.4] text-[#8a5a14] dark:text-[#e0b061]">
             {item.tip}
           </div>
         </div>

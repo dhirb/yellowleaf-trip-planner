@@ -68,10 +68,10 @@ export function TranslationSheet<V>({
     <>
       <div
         onClick={onClose}
-        className="absolute inset-0 z-[80] animate-fade-in bg-[rgba(31,27,22,0.4)]"
+        className="absolute inset-0 z-[80] animate-fade-in bg-black/50"
       />
       <div className="no-scrollbar absolute bottom-0 left-0 right-0 z-[81] max-h-[82%] animate-sheet-up overflow-y-auto rounded-t-[28px] bg-app-bg px-[22px] pt-3 pb-10 shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
-        <div className="mx-auto mt-1 mb-[18px] h-[5px] w-11 rounded-[99px] bg-[#ddd3c2]" />
+        <div className="mx-auto mt-1 mb-[18px] h-[5px] w-11 rounded-[99px] bg-border-strong" />
 
         <div className="mb-[18px] text-[22px] font-extrabold tracking-[-0.3px]">
           {label}
@@ -79,7 +79,7 @@ export function TranslationSheet<V>({
 
         {/* English (source) */}
         <label className="mb-[18px] block">
-          <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-[#A89F92]">
+          <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-faint">
             English
           </span>
           {multiline ? (
@@ -106,7 +106,7 @@ export function TranslationSheet<V>({
           onClick={onTranslate}
           disabled={translating || value.trim() === ""}
           className={cn(
-            "mb-[20px] flex h-10 items-center gap-[6px] rounded-sm bg-ink px-[14px] text-[13px] font-extrabold text-white touch-manipulation",
+            "mb-[20px] flex h-10 items-center gap-[6px] rounded-sm bg-ink px-[14px] text-[13px] font-extrabold text-app-bg touch-manipulation",
             translating || value.trim() === ""
               ? "cursor-default opacity-50"
               : "cursor-pointer opacity-100",
@@ -119,7 +119,7 @@ export function TranslationSheet<V>({
         {/* Per-language overrides */}
         {langs.map((lang) => (
           <label key={lang.code} className="mb-[16px] block">
-            <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-[#A89F92]">
+            <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-faint">
               {lang.label}
             </span>
             {multiline ? (
