@@ -161,5 +161,39 @@ for (const { step, value } of SCALES) {
     await page.screenshot({
       path: testInfo.outputPath(`${step}-activity-detail.png`),
     });
+
+    // --- Flight detail screen ------------------------------------------------
+    // Go back to the day view, then tap the flight card (CZ 350 on day 0).
+    await page.getByRole("button", { name: "Back" }).click();
+    await expect(
+      page.locator("button").filter({ hasText: "CZ 350" }).first(),
+    ).toBeVisible();
+    await page
+      .locator("button")
+      .filter({ hasText: "CZ 350" })
+      .first()
+      .click();
+    await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+    await expectNoHorizontalOverflow(page, `${step}/flight-detail`);
+    await page.screenshot({
+      path: testInfo.outputPath(`${step}-flight-detail.png`),
+    });
+
+    // --- Stay detail screen --------------------------------------------------
+    // Go back to the day view, then tap the accommodation card.
+    await page.getByRole("button", { name: "Back" }).click();
+    await expect(
+      page.locator("button").filter({ hasText: "Where you're staying" }).first(),
+    ).toBeVisible();
+    await page
+      .locator("button")
+      .filter({ hasText: "Where you're staying" })
+      .first()
+      .click();
+    await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+    await expectNoHorizontalOverflow(page, `${step}/stay-detail`);
+    await page.screenshot({
+      path: testInfo.outputPath(`${step}-stay-detail.png`),
+    });
   });
 }

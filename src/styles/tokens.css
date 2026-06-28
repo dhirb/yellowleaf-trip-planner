@@ -60,9 +60,10 @@
 
   /* ── Type scale (traveler) ──
    * Each size scales with --font-scale (set per-device by useFontScale).
-   * The `, 1` fallback keeps any surface that doesn't set the variable
-   * (the admin view) at exactly 1×. Only font-size reads this — padding,
-   * gaps, icons and radii stay fixed, so scaling is text-only. */
+   * The `, 1` fallback keeps any surface without the variable at exactly 1×.
+   * The admin day view reuses some traveler card components but the traveler
+   * unmount cleanup removes --font-scale, so admin falls back to 1×.
+   * Only font-size reads this — padding, gaps, icons and radii stay fixed. */
   --text-tag: calc(12px * var(--font-scale, 1));
   --text-caption: calc(13px * var(--font-scale, 1));
   --text-small: calc(14px * var(--font-scale, 1));
