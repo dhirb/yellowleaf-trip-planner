@@ -18,7 +18,8 @@
  *   whose overflow is already visually clipped by an ancestor).
  */
 
-import { test, expect, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 const SCALES = [
   { step: "standard", value: 1 },

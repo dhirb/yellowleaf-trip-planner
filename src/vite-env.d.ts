@@ -8,6 +8,9 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_STORAGE_BUCKET: string;
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
   readonly VITE_FIREBASE_APP_ID: string;
+  // Optional: reCAPTCHA v3 site key for Firebase App Check. When unset, App
+  // Check is skipped (see src/firebase.ts) so the app still runs locally.
+  readonly VITE_FIREBASE_APPCHECK_SITE_KEY?: string;
 }
 
 interface ImportMeta {

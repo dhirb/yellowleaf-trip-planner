@@ -1,4 +1,5 @@
 import { initializeApp, type FirebaseOptions } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 import {
   initializeFirestore,
@@ -34,6 +35,41 @@ if (missing.length > 0) {
 }
 
 export const app = initializeApp(firebaseConfig);
+
+/**
+ * App Check attests that requests come from our genuine app before Firestore,
+ * Auth, and AI Logic will serve them — the protection that matters once the web
+ * config is public (it necessarily ships in the client bundle). The reCAPTCHA
+ * v3 site key is itself a public value, like the rest of the Firebase config.
+ *
+ * It runs only in a real browser: reCAPTCHA needs `document` and a network, so
+ * we skip it under Vitest/Node (the rules tests) to avoid init failures. It is
+ * also optional — without a site key the app still loads, so enforcement can be
+ * rolled out gradually. In dev we register a debug token instead of solving
+ * reCAPTCHA; copy the token it logs into Firebase console → App Check → Manage
+ * debug tokens so localhost passes once enforcement is on.
+ */
+const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+
+if (typeof document !== "undefined" && appCheckSiteKey) {
+  if (import.meta.env.DEV) {
+    const debug = globalThis as typeof globalThis & {
+      FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
+    };
+    // Opt into an auto-generated debug token, but never clobber one already
+    // injected by the e2e harness: Playwright sets a *registered* token via
+    // addInitScript (see test/e2e/fixtures.ts) so enforced backends accept its
+    // requests, whereas `true` mints a throwaway token you'd have to register
+    // by hand each run.
+    debug.FIREBASE_APPCHECK_DEBUG_TOKEN ??= true;
+  }
+
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+
 export const auth = getAuth(app);
 
 /**
