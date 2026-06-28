@@ -1,5 +1,4 @@
 import type { Contact, ContactKind, ItemKind } from "../types";
-import { cn } from "./cn";
 
 /** Ink/neutral palette (kept in sync with tokens.css) for dynamic inline styles. */
 export const INK = "#1F1B16";
@@ -62,13 +61,3 @@ export const ui = {
   tabbar:
     "flex shrink-0 border-t border-[#ede6db] bg-[rgba(251,248,243,0.97)] pt-[6px] pb-[max(env(safe-area-inset-bottom),8px)]",
 } as const;
-
-/** Segmented-control pill classes (editor tabs). */
-export function seg(on: boolean): string {
-  return cn(
-    "flex-1 cursor-pointer rounded-[11px] py-[9px] text-center text-[13.5px] font-bold transition-all duration-150",
-    on
-      ? "bg-surface text-ink shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
-      : "bg-transparent text-[#9a9183] shadow-none",
-  );
-}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Settings } from "lucide-react";
 import { useTripEditor } from "../../hooks/useTripEditor";
 import {
   generateActivityDescription,
@@ -10,7 +10,7 @@ import { setItemContent, setItemTranslations } from "../../lib/editTrip";
 import type { ItemTranslation } from "../../types";
 import { softDeleteTrip } from "../../lib/trips";
 import { cn } from "../../lib/cn";
-import { ui, seg } from "../../lib/ui";
+import { ui } from "../../lib/ui";
 import { DaysTab } from "./DaysTab";
 import { SettingsTab } from "./SettingsTab";
 import { ItemEditScreen } from "./ItemEditScreen";
@@ -181,14 +181,16 @@ export function Editor({
     <div className="flex h-full flex-col bg-app-bg">
       <div className="flex shrink-0 items-center gap-[10px] px-4 pt-[max(env(safe-area-inset-top),14px)] pb-3">
         <button
-          onClick={onBack}
-          aria-label="Back to trips"
+          onClick={() => (tab === "settings" ? setTab("days") : onBack())}
+          aria-label={
+            tab === "settings" ? "Back to itinerary" : "Back to trips"
+          }
           className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
         >
           <ChevronLeft size={22} color="#7A6F60" strokeWidth={2.6} />
         </button>
         <div className="min-w-0 flex-1 overflow-hidden text-[20px] font-extrabold tracking-[-0.3px] text-ellipsis whitespace-nowrap">
-          Edit trip
+          {tab === "settings" ? "Settings" : trip.title}
           {saving && (
             <span className="ml-2 text-[12px] font-semibold text-fainter">
               saving…
@@ -196,28 +198,23 @@ export function Editor({
           )}
         </div>
         <button
-          onClick={handlePublish}
-          className="cursor-pointer rounded-[13px] bg-accent px-[18px] py-[11px] text-[15px] font-extrabold text-white shadow-[0_6px_14px_rgba(194,84,31,0.28)]"
+          onClick={() => setTab(tab === "settings" ? "days" : "settings")}
+          aria-label={
+            tab === "settings" ? "Back to itinerary" : "Trip settings"
+          }
+          aria-pressed={tab === "settings"}
+          className={cn(
+            ui.chevBtn,
+            "h-[44px] w-[44px]",
+            tab === "settings" && "border-accent bg-accent",
+          )}
         >
-          Publish
+          <Settings
+            size={20}
+            color={tab === "settings" ? "#fff" : "#7A6F60"}
+            strokeWidth={2.4}
+          />
         </button>
-      </div>
-
-      <div className="shrink-0 px-[18px] pt-1 pb-3">
-        <div className="flex gap-1 rounded-md bg-[#f0e9de] p-1">
-          <button
-            onClick={() => setTab("days")}
-            className={seg(tab === "days")}
-          >
-            Itinerary
-          </button>
-          <button
-            onClick={() => setTab("settings")}
-            className={seg(tab === "settings")}
-          >
-            Settings
-          </button>
-        </div>
       </div>
 
       <div

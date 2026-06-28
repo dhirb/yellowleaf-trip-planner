@@ -122,36 +122,25 @@ export function SettingsTab({
           }
           className={cn(ui.input, "font-bold")}
         />
-        <Label mt={18}>Trip dates</Label>
-        <div className="flex flex-col gap-[14px]">
-          <div>
-            <div className="mb-[5px] text-[12px] font-bold text-ink-dim">
-              Start
-            </div>
-            <input
-              type="date"
-              value={start}
-              onChange={(e) => set(setTripStart(trip, e.target.value))}
-              className={cn(ui.input, "h-12 font-semibold")}
-            />
-          </div>
-          <div>
-            <div className="mb-[5px] text-[12px] font-bold text-ink-dim">
-              End
-            </div>
-            <input
-              type="date"
-              value={end}
-              min={start}
-              onChange={(e) => {
-                const next = setTripEnd(trip, e.target.value);
-                if (next) set(next);
-                else onToast("End date must be on or after the start.");
-              }}
-              className={cn(ui.input, "h-12 font-semibold")}
-            />
-          </div>
-        </div>
+        <Label mt={18}>Start</Label>
+        <input
+          type="date"
+          value={start}
+          onChange={(e) => set(setTripStart(trip, e.target.value))}
+          className={cn(ui.input, "h-12 font-semibold")}
+        />
+        <Label mt={14}>End</Label>
+        <input
+          type="date"
+          value={end}
+          min={start}
+          onChange={(e) => {
+            const next = setTripEnd(trip, e.target.value);
+            if (next) set(next);
+            else onToast("End date must be on or after the start.");
+          }}
+          className={cn(ui.input, "h-12 font-semibold")}
+        />
       </div>
 
       {/* Languages */}
@@ -201,7 +190,7 @@ export function SettingsTab({
         <Label>Co-owners</Label>
         <div className="mb-3 text-[13.5px] font-medium leading-[1.45] text-muted">
           {isPrimaryOwner
-            ? "Co-owners can edit this trip alongside you. Add them by the email on their account — they must already be able to sign in. Only you can manage this list or delete the trip."
+            ? "Co-owners can edit this trip alongside you. Add them by the email on their account. Only you can manage this list or delete the trip."
             : "These people can edit this trip. Only the trip's owner can change who has access."}
         </div>
         {coOwners.length > 0 && (

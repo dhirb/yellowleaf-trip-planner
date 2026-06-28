@@ -471,23 +471,36 @@ Create `harness.html` at the repo root:
 </html>
 ```
 
-Create `test/harness/main.tsx`. Import the demo trip from the seed data (confirm the exported symbol name in `src/data/chinaTrip.ts` / `src/data/seedTrips.ts` and use a trip that has at least one day with an activity, a flight, and a stay so every detail screen is reachable):
+Create `test/harness/main.tsx`.
+
+> **Critical:** `chinaTrip` is exported as raw `SeedTrip` data (`Omit<RawTripData, "ownerId">`), **not** a normalized `Trip`. `TravelerApp` requires a fully-migrated `Trip`, so the harness must run the seed through `normalizeTrip()` and attach an `id` — exactly what the real Firestore loader does (`src/lib/trips.ts` `toTrip()`: `{ ...normalizeTrip(data), id, ... }`). Passing the raw object would fail `tsc` and break rendering (`buildViewItems`/`localizeStay` expect normalized data), so every Playwright assertion would fail. The `chinaTrip` itinerary already includes days with activities, flights, and a stay, so all detail screens are reachable.
+
 ```tsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles/global.css";
+import type { Trip } from "../../src/types";
+import { normalizeTrip } from "../../src/lib/migrateTrip";
 import { AppShell } from "../../src/components/AppShell";
 import { TravelerApp } from "../../src/components/traveler/TravelerApp";
-import { chinaTrip } from "../../src/data/chinaTrip"; // adjust to the actual export
+import { chinaTrip } from "../../src/data/chinaTrip";
+
+// Mirror src/lib/trips.ts toTrip(): normalize raw seed data, then attach an id.
+const trip: Trip = {
+  ...normalizeTrip({ ...chinaTrip, ownerId: "demo" }),
+  id: "demo",
+};
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AppShell>
-      <TravelerApp trip={chinaTrip} />
+      <TravelerApp trip={trip} />
     </AppShell>
   </StrictMode>,
 );
 ```
+
+> If `tsc` reports a missing field on the `Trip` object, compare against `toTrip()` in `src/lib/trips.ts` and add the same optional fields (`createdAt`/`updatedAt`/`deletedAt`) — they are not required for rendering.
 
 - [ ] **Step 4: Create the Playwright config**
 
