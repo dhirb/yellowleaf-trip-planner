@@ -47,7 +47,7 @@ const NavBtn = ({
   <button
     onClick={onClick}
     aria-label={dir === "left" ? "Previous day" : "Next day"}
-    className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[13px] border border-[#ece4d8] bg-surface"
+    className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[13px] border border-border bg-surface"
   >
     {dir === "left" ? (
       <ChevronLeft size={20} color="#7A6F60" strokeWidth={2.6} />

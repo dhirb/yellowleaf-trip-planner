@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 const AdminApp = lazy(() =>
   import("./components/admin/AdminApp").then((m) => ({ default: m.AdminApp })),
@@ -20,16 +21,18 @@ const Loading = () => (
 function App() {
   return (
     <BrowserRouter>
-      <AppShell>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route path="/admin" element={<AdminApp />} />
-            <Route path="/t/:tripId" element={<TravelerRoute />} />
-            <Route path="/" element={<Navigate to="/admin" replace />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
-          </Routes>
-        </Suspense>
-      </AppShell>
+      <ThemeProvider>
+        <AppShell>
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/admin" element={<AdminApp />} />
+              <Route path="/t/:tripId" element={<TravelerRoute />} />
+              <Route path="/" element={<Navigate to="/admin" replace />} />
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Routes>
+          </Suspense>
+        </AppShell>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

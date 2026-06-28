@@ -100,7 +100,7 @@ export function ItemEditScreen({
         onClick={() => onAskImage(di, ii)}
         disabled={busyImage}
         className={cn(
-          "mb-[18px] flex h-12 w-full items-center justify-center gap-[6px] rounded-sm bg-ink px-[14px] text-[14px] font-extrabold text-white touch-manipulation",
+          "mb-[18px] flex h-12 w-full items-center justify-center gap-[6px] rounded-sm bg-ink px-[14px] text-[14px] font-extrabold text-app-bg touch-manipulation",
           busyImage
             ? "cursor-default opacity-70"
             : "cursor-pointer opacity-100",
@@ -125,7 +125,7 @@ export function ItemEditScreen({
           onClick={() => onAskDescription(di, ii)}
           disabled={busyNote}
           className={cn(
-            "flex h-12 min-w-0 flex-1 items-center justify-center gap-[6px] rounded-sm bg-ink px-[14px] text-[14px] font-extrabold text-white touch-manipulation",
+            "flex h-12 min-w-0 flex-1 items-center justify-center gap-[6px] rounded-sm bg-ink px-[14px] text-[14px] font-extrabold text-app-bg touch-manipulation",
             busyNote
               ? "cursor-default opacity-70"
               : "cursor-pointer opacity-100",

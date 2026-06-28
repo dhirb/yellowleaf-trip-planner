@@ -16,7 +16,7 @@ interface FlightCardProps {
 }
 
 const BASE =
-  "mb-[14px] flex items-center gap-[14px] rounded-lg border border-[#d2e3f0] bg-[#eaf2f9] p-[15px]";
+  "mb-[14px] flex items-center gap-[14px] rounded-lg border border-flight-soft bg-flight-soft p-[15px]";
 
 /**
  * A single flight card. Shared by the traveler day view (static `div`) and the
@@ -47,7 +47,7 @@ export function FlightCard({
         <Plane size={22} color="#fff" strokeWidth={2} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-caption font-extrabold uppercase tracking-[0.4px] text-[#2c6e9b]">
+        <div className="text-caption font-extrabold uppercase tracking-[0.4px] text-flight">
           Flight · {flight.flightNo}
         </div>
         {headline && (
@@ -55,10 +55,10 @@ export function FlightCard({
             {headline}
           </div>
         )}
-        <div className="text-small font-semibold text-[#5c7c92]">
+        <div className="text-small font-semibold text-muted">
           {flight.from} &nbsp;→&nbsp; {flight.to}
           {stops > 0 && (
-            <span className="text-[#7c95a6]">
+            <span className="text-muted">
               {" · "}
               {stops} stop{stops > 1 ? "s" : ""}
             </span>

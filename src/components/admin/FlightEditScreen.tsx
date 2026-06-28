@@ -91,7 +91,7 @@ export function FlightEditScreen({
 
       {/* Layovers — optional connecting stops, in order from origin to destination. */}
       <div className="mb-[18px]">
-        <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-[#A89F92]">
+        <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-faint">
           Layovers
         </span>
         {layovers.map((lo, li) => (
@@ -104,7 +104,7 @@ export function FlightEditScreen({
                 type="button"
                 onClick={() => update((t) => delLayover(t, di, fi, li))}
                 aria-label={`Remove layover ${li + 1}`}
-                className="flex h-7 w-7 items-center justify-center rounded-sm text-[#A89F92] hover:text-ink"
+                className="flex h-7 w-7 items-center justify-center rounded-sm text-faint hover:text-ink"
               >
                 <X size={16} strokeWidth={2.4} />
               </button>

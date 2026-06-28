@@ -3,10 +3,10 @@ import { cn } from "../../lib/cn";
 
 /** Shared control styling for the admin edit screens. */
 export const fieldInput =
-  "h-12 w-full rounded-sm border border-[#e7dfd2] bg-surface px-[12px] py-0 text-[15px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15";
+  "h-12 w-full rounded-sm border border-border-strong bg-surface px-[12px] py-0 text-[15px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15";
 
 export const fieldTextarea =
-  "min-h-[120px] w-full resize-y rounded-sm border border-[#e7dfd2] bg-surface px-[12px] py-[10px] text-[15px] font-medium leading-[1.5] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15";
+  "min-h-[120px] w-full resize-y rounded-sm border border-border-strong bg-surface px-[12px] py-[10px] text-[15px] font-medium leading-[1.5] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15";
 
 /** A labeled field block with generous vertical rhythm for the roomy edit screens. */
 export function Field({
@@ -20,7 +20,7 @@ export function Field({
 }) {
   return (
     <label className={cn("mb-[18px] block", className)}>
-      <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-[#A89F92]">
+      <span className="mb-[7px] block text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-faint">
         {label}
       </span>
       {children}

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { THEMES, THEME_LABELS } from "../../lib/theme";
+import { useTheme } from "../../hooks/useTheme";
 
 interface AccountMenuProps {
   email: string | null;
@@ -92,6 +94,13 @@ export function AccountMenu({
             </div>
           </div>
 
+          <div className="border-t border-border px-[12px] pt-[11px] pb-[10px]">
+            <div className="mb-[8px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-faint">
+              Appearance
+            </div>
+            <ThemeSegment />
+          </div>
+
           <div className="border-t border-border px-[8px] py-[8px]">
             <button
               type="button"
@@ -148,9 +157,34 @@ function Caret({ open }: { open: boolean }) {
   return (
     <ChevronDown
       size={16}
-      color="#A89F92"
+      color="currentColor"
       strokeWidth={2}
-      className={cn("transition-transform duration-150", open && "rotate-180")}
+      className={cn(
+        "text-faint transition-transform duration-150",
+        open && "rotate-180",
+      )}
     />
+  );
+}
+
+/** Three-way light/dark/system segmented control for the account popover. */
+function ThemeSegment() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div className="flex gap-[5px]">
+      {THEMES.map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => setTheme(t)}
+          className={cn(
+            "flex-1 cursor-pointer rounded-[9px] px-0 py-[7px] text-center text-[12.5px] font-bold transition-colors",
+            theme === t ? "bg-accent text-white" : "bg-control text-ink-dim",
+          )}
+        >
+          {THEME_LABELS[t]}
+        </button>
+      ))}
+    </div>
   );
 }

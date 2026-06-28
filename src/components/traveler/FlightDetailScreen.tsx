@@ -28,7 +28,7 @@ export function FlightDetailScreen({
       </div>
 
       {flight.flightNo && (
-        <div className="text-caption font-extrabold uppercase tracking-[0.4px] text-[#2c6e9b]">
+        <div className="text-caption font-extrabold uppercase tracking-[0.4px] text-flight">
           Flight · {flight.flightNo}
         </div>
       )}

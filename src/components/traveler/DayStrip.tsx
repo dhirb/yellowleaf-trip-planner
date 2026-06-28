@@ -75,8 +75,8 @@ export function DayStrip({
               on
                 ? "border-accent"
                 : isToday
-                  ? "border-[#e6b68e]"
-                  : "border-[#ece4d8]",
+                  ? "border-accent/40"
+                  : "border-border",
               on ? "shadow-[0_6px_14px_rgba(194,84,31,0.28)]" : "shadow-none",
             )}
             style={{ width: size }}

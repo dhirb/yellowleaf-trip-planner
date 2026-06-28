@@ -160,7 +160,7 @@ export function SettingsTab({
                 <button
                   onClick={() => update((t) => removeTripLanguage(t, l.code))}
                   aria-label={`Remove ${l.label}`}
-                  className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full bg-[#e3dacb]"
+                  className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full bg-border-strong"
                 >
                   <Trash2 size={11} />
                 </button>
@@ -203,7 +203,7 @@ export function SettingsTab({
                   <button
                     onClick={() => update((t) => removeCoOwner(t, email))}
                     aria-label={`Remove ${email}`}
-                    className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full bg-[#e3dacb]"
+                    className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full bg-border-strong"
                   >
                     <Trash2 size={11} />
                   </button>
@@ -232,7 +232,7 @@ export function SettingsTab({
             />
             <button
               onClick={addCoOwnerEmail}
-              className="flex h-12 shrink-0 cursor-pointer items-center rounded-[13px] bg-ink px-[18px] py-0 text-[14.5px] font-extrabold text-white"
+              className="flex h-12 shrink-0 cursor-pointer items-center rounded-[13px] bg-ink px-[18px] py-0 text-[14.5px] font-extrabold text-app-bg"
             >
               Add
             </button>
@@ -255,12 +255,12 @@ export function SettingsTab({
           viewable by anyone but you.
         </div>
         <div className="flex items-center gap-[10px]">
-          <div className="flex h-[50px] min-w-0 flex-1 items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-[13px] border border-[#ece4d8] bg-surface-sunken px-[14px] py-0 text-[15px] font-bold text-ink-dim">
+          <div className="flex h-[50px] min-w-0 flex-1 items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-[13px] border border-border bg-surface-sunken px-[14px] py-0 text-[15px] font-bold text-ink-dim">
             {shareLink}
           </div>
           <button
             onClick={copyLink}
-            className="flex h-[50px] shrink-0 cursor-pointer items-center rounded-[13px] bg-ink px-[18px] py-0 text-[14.5px] font-extrabold text-white"
+            className="flex h-[50px] shrink-0 cursor-pointer items-center rounded-[13px] bg-ink px-[18px] py-0 text-[14.5px] font-extrabold text-app-bg"
           >
             Copy
           </button>
@@ -273,7 +273,7 @@ export function SettingsTab({
         {trip.contacts.map((c, ci) => (
           <div
             key={ci}
-            className="mb-[10px] rounded-md border border-[#ece4d8] bg-[#f8f4ed] p-[10px]"
+            className="mb-[10px] rounded-md border border-border bg-surface-sunken p-[10px]"
           >
             <div className="mb-2 flex items-center gap-2">
               <label
@@ -310,7 +310,7 @@ export function SettingsTab({
               <button
                 onClick={() => update((t) => delContact(t, ci))}
                 aria-label="Remove contact"
-                className="flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-[9px] bg-[#fbeeec] text-[#b4453a]"
+                className="flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-[9px] bg-danger-soft text-danger"
               >
                 <Trash2 size={16} />
               </button>
@@ -335,7 +335,7 @@ export function SettingsTab({
         ))}
         <button
           onClick={() => update(addContact)}
-          className="flex h-11 w-full cursor-pointer items-center justify-center gap-[6px] rounded-[12px] border-[1.5px] border-dashed border-[#d9cfbe] bg-transparent text-[14px] font-bold text-muted"
+          className="flex h-11 w-full cursor-pointer items-center justify-center gap-[6px] rounded-[12px] border-[1.5px] border-dashed border-border-strong bg-transparent text-[14px] font-bold text-muted"
         >
           <Plus size={16} color="#8A8175" strokeWidth={2.4} />
           Add contact
@@ -359,12 +359,12 @@ export function SettingsTab({
       </a>
 
       {/* Danger zone */}
-      <div className={cn(ui.padCard, "mt-6 border-[#eccfc8]")}>
+      <div className={cn(ui.padCard, "mt-6 border-danger/30")}>
         <Label>Danger zone</Label>
         {!confirmingDelete ? (
           <button
             onClick={() => setConfirmingDelete(true)}
-            className="flex h-[54px] w-full cursor-pointer items-center justify-center rounded-[16px] border border-[#eccfc8] bg-[#fbeeec] text-[16px] font-bold text-[#C0392B]"
+            className="flex h-[54px] w-full cursor-pointer items-center justify-center rounded-[16px] border border-danger/30 bg-danger-soft text-[16px] font-bold text-danger"
           >
             Delete trip
           </button>
@@ -380,14 +380,14 @@ export function SettingsTab({
               <button
                 onClick={() => setConfirmingDelete(false)}
                 disabled={deleting}
-                className="h-[52px] flex-1 cursor-pointer rounded-[14px] border border-[#e3dacb] bg-surface text-[15px] font-bold text-ink disabled:opacity-60"
+                className="h-[52px] flex-1 cursor-pointer rounded-[14px] border border-border-strong bg-surface text-[15px] font-bold text-ink disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="h-[52px] flex-1 cursor-pointer rounded-[14px] border-none bg-[#C0392B] text-[15px] font-extrabold text-white shadow-[0_6px_14px_rgba(192,57,43,0.3)] disabled:opacity-60"
+                className="h-[52px] flex-1 cursor-pointer rounded-[14px] border-none bg-danger text-[15px] font-extrabold text-white shadow-soft disabled:opacity-60"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>
