@@ -1,0 +1,74 @@
+name: Deploy
+
+# Builds the app and deploys Firebase Hosting + Firestore rules/indexes whenever
+# main updates. Runs `npm run deploy` (build + `firebase deploy --only
+# hosting,firestore`). Can also be triggered by hand from the Actions tab.
+#
+# Required GitHub configuration (Settings -> Secrets and variables -> Actions):
+#
+#   Repository VARIABLES (public Firebase web config — embedded in the client
+#   bundle at build time; not secret, see .env.example):
+#     VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
+#     VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID,
+#     VITE_FIREBASE_APP_ID, VITE_FIREBASE_MEASUREMENT_ID
+#
+#   Repository SECRET (real secret — keep encrypted):
+#     FIREBASE_SERVICE_ACCOUNT — full JSON of a service-account key with deploy
+#     rights (Firebase console -> Project settings -> Service accounts).
+#
+# This workflow interpolates only trusted contexts (vars, secrets, runner.temp);
+# no untrusted event data is used in any run: command.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at once; let an in-flight deploy finish rather than
+# racing it (deploys are not safely cancellable mid-flight).
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # firebase-tools is a global dependency locally, so it is not in
+      # package.json — install it explicitly for the deploy step.
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Build and deploy to Firebase
+        env:
+          # Public web config (repo variables) — read by `vite build`.
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ vars.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+          # Service-account JSON (secret) -> temp file for non-interactive auth.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npm run deploy
+
+      # Remove the credentials file even if the deploy failed.
+      - name: Remove service-account key
+        if: always()
+        run: rm -f "${{ runner.temp }}/firebase-key.json"
