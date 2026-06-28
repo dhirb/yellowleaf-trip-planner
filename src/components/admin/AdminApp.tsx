@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { useAuth } from "../../hooks/useAuth";
@@ -31,7 +30,6 @@ function AdminInner() {
   );
   const { toast, showToast } = useToast();
   const [editId, setEditId] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -67,7 +65,6 @@ function AdminInner() {
         <Editor
           tripId={editId}
           onBack={() => setEditId(null)}
-          onPreview={(id) => navigate(`/t/${id}`)}
           showToast={showToast}
           onDeleted={() => setEditId(null)}
         />

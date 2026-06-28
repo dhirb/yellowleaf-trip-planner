@@ -4,7 +4,7 @@ import { cn } from "../../lib/cn";
 import { ui, contactColor } from "../../lib/ui";
 import { Button } from "../ui/Button";
 import { Select } from "../ui/Select";
-import { Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import {
   addContact,
   addCoOwner,
@@ -28,7 +28,6 @@ interface SettingsTabProps {
   update: (updater: (t: Trip) => Trip) => void;
   set: (next: Trip) => void;
   onPublish: () => void;
-  onPreview: () => void;
   onToast: (msg: string) => void;
   /** Permanently delete this trip. Rejects (after toasting) on failure. */
   onDelete: () => Promise<void>;
@@ -59,7 +58,6 @@ export function SettingsTab({
   update,
   set,
   onPublish,
-  onPreview,
   onToast,
   onDelete,
 }: SettingsTabProps) {
@@ -347,9 +345,18 @@ export function SettingsTab({
       <Button onClick={onPublish} className="mb-3">
         Publish changes
       </Button>
-      <Button variant="ghost" onClick={onPreview}>
-        Preview as traveler
-      </Button>
+      <a
+        href={shareLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          ui.btnGhost,
+          "flex items-center justify-center gap-2 no-underline",
+        )}
+      >
+        Open traveler view
+        <ExternalLink size={17} strokeWidth={2.4} />
+      </a>
 
       {/* Danger zone */}
       <div className={cn(ui.padCard, "mt-6 border-[#eccfc8]")}>

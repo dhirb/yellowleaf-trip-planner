@@ -168,11 +168,7 @@ for (const { step, value } of SCALES) {
     await expect(
       page.locator("button").filter({ hasText: "CZ 350" }).first(),
     ).toBeVisible();
-    await page
-      .locator("button")
-      .filter({ hasText: "CZ 350" })
-      .first()
-      .click();
+    await page.locator("button").filter({ hasText: "CZ 350" }).first().click();
     await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
     await expectNoHorizontalOverflow(page, `${step}/flight-detail`);
     await page.screenshot({
@@ -183,7 +179,10 @@ for (const { step, value } of SCALES) {
     // Go back to the day view, then tap the accommodation card.
     await page.getByRole("button", { name: "Back" }).click();
     await expect(
-      page.locator("button").filter({ hasText: "Where you're staying" }).first(),
+      page
+        .locator("button")
+        .filter({ hasText: "Where you're staying" })
+        .first(),
     ).toBeVisible();
     await page
       .locator("button")

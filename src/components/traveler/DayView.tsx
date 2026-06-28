@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Trip } from "../../types";
 import { bigDate, type TimeFormat } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
@@ -59,10 +60,13 @@ export function DayView({
   onOpenStay,
 }: DayViewProps) {
   const day = trip.days[dayIndex] ?? trip.days[0];
-  const viewItems = buildViewItems(day, lang);
+  const viewItems = useMemo(() => buildViewItems(day, lang), [day, lang]);
 
   const rawStay = day.stay ?? trip.hotel;
-  const stay = rawStay ? localizeStay(rawStay, lang) : null;
+  const stay = useMemo(
+    () => (rawStay ? localizeStay(rawStay, lang) : null),
+    [rawStay, lang],
+  );
   const stayName = stay?.name ?? "";
   const staySub = stay?.desc ?? stay?.note ?? "";
 

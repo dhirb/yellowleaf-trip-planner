@@ -1,0 +1,44 @@
+name: Update airports data
+
+# Regenerates public/airports.json from the OurAirports dataset and opens a PR
+# when it changes. Runs monthly so closed/renamed/new airports trickle in, and
+# can be triggered by hand from the Actions tab. All steps use static inputs
+# only (no untrusted event data interpolated into run: commands).
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 03:00 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Regenerate airports dataset
+        run: npm run build:airports
+
+      - name: Open a PR if the data changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: refresh airports dataset from OurAirports"
+          title: "chore: refresh airports dataset"
+          body: |
+            Automated monthly refresh of `public/airports.json` from the
+            [OurAirports](https://ourairports.com/data/) dataset.
+
+            Review the diff for unexpected mass changes before merging.
+          branch: chore/update-airports
+          delete-branch: true
+          add-paths: public/airports.json

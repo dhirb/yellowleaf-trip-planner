@@ -1,19 +1,11 @@
-import { useState } from "react";
 import { Download, ExternalLink, MoreVertical, Share, X } from "lucide-react";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { resolveInstallMode, type InstallMode } from "../../lib/pwaInstall";
 import { ui } from "../../lib/ui";
 import { cn } from "../../lib/cn";
 
 const DISMISS_KEY = "yl:installDismissed";
-
-function readDismissed(): boolean {
-  try {
-    return localStorage.getItem(DISMISS_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 /** The accent icon + sub-copy shown beneath the headline, per install mode. */
 function InstallHint({ mode }: { mode: InstallMode }) {
@@ -113,7 +105,13 @@ export function InstallPrompt() {
     isInAppBrowser,
     promptInstall,
   } = usePwaInstall();
-  const [dismissed, setDismissed] = useState(readDismissed);
+  // Dismissal is remembered per-device (stored as "1") so the banner never nags.
+  const [dismissed, setDismissed] = useLocalStorage<boolean>(
+    DISMISS_KEY,
+    false,
+    (raw) => raw === "1",
+    (v) => (v ? "1" : "0"),
+  );
 
   const mode = resolveInstallMode(
     { isIOS, isAndroid, isInAppBrowser, isInstalled: installed },
@@ -121,14 +119,7 @@ export function InstallPrompt() {
   );
   if (mode === null || dismissed) return null;
 
-  const dismiss = () => {
-    setDismissed(true);
-    try {
-      localStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      // Storage disabled — at least hide it for this session.
-    }
-  };
+  const dismiss = () => setDismissed(true);
 
   return (
     <div className="shrink-0 px-[14px] pb-[10px]">

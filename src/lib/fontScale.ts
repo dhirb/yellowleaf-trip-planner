@@ -5,11 +5,7 @@
  */
 export type FontStep = "standard" | "large" | "xlarge";
 
-export const FONT_STEPS: readonly FontStep[] = [
-  "standard",
-  "large",
-  "xlarge",
-];
+export const FONT_STEPS: readonly FontStep[] = ["standard", "large", "xlarge"];
 
 const FONT_SCALE: Record<FontStep, number> = {
   standard: 1,

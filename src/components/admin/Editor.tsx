@@ -4,10 +4,8 @@ import { useTripEditor } from "../../hooks/useTripEditor";
 import {
   generateActivityDescription,
   generateActivityImage,
-  translateItem,
 } from "../../lib/ai";
-import { setItemContent, setItemTranslations } from "../../lib/editTrip";
-import type { ItemTranslation } from "../../types";
+import { setItemContent } from "../../lib/editTrip";
 import { softDeleteTrip } from "../../lib/trips";
 import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
@@ -20,7 +18,6 @@ import { StayEditScreen } from "./StayEditScreen";
 interface EditorProps {
   tripId: string;
   onBack: () => void;
-  onPreview: (tripId: string) => void;
   showToast: (msg: string) => void;
   /** Called after the trip has been deleted, to leave the editor. */
   onDeleted: () => void;
@@ -33,13 +30,7 @@ type Editing =
   | { type: "stay"; di: number }
   | null;
 
-export function Editor({
-  tripId,
-  onBack,
-  onPreview,
-  showToast,
-  onDeleted,
-}: EditorProps) {
+export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
   const editor = useTripEditor(tripId);
   const [tab, setTab] = useState<"days" | "settings">("days");
   const [adminDay, setAdminDay] = useState(0);
@@ -75,46 +66,45 @@ export function Editor({
   const goDay = (i: number) =>
     setAdminDay(Math.max(0, Math.min(dayCount - 1, i)));
 
-  const askAI = async (di: number, ii: number) => {
-    const key = `${di}-${ii}`;
-    setAiBusyKey(key);
+  // Two independent AI assists, each with its own busy key so one can run (and
+  // show its spinner) without disabling the other. Translation is intentionally
+  // not batched here — it lives per-field on the edit screen.
+
+  // Write a description from the activity's name.
+  const askAIDescription = async (di: number, ii: number) => {
+    setAiBusyKey(`${di}-${ii}:note`);
     const item = trip.days[di].items[ii];
     const dest = `${trip.dest}, ${trip.country}`;
     try {
-      const [note, image] = await Promise.all([
-        generateActivityDescription(item.title, dest),
-        generateActivityImage(item.title, dest),
-      ]);
-      const langs = trip.languages ?? [];
-      const base = { ...item, note, ...(image ? { image } : {}) };
-      let translations: Record<string, ItemTranslation> = {};
-      if (langs.length > 0) {
-        try {
-          translations = await translateItem(base, langs, dest);
-        } catch {
-          showToast(
-            "Saved description, but translation failed. Try Translate again.",
-          );
-        }
-      }
-      // No photo found → leave the thumbnail blank, don't overwrite an existing one.
-      update((t) => {
-        let next = setItemContent(
-          t,
-          di,
-          ii,
-          image ? { note, image } : { note },
-        );
-        if (Object.keys(translations).length > 0) {
-          next = setItemTranslations(next, di, ii, translations);
-        }
-        return next;
-      });
+      const note = await generateActivityDescription(item.title, dest);
+      update((t) => setItemContent(t, di, ii, { note }));
     } catch (e: unknown) {
       showToast(
         e instanceof Error
           ? e.message
-          : "AI could not generate content. Check Firebase AI Logic is enabled.",
+          : "AI could not generate a description. Check Firebase AI Logic is enabled.",
+      );
+    } finally {
+      setAiBusyKey("");
+    }
+  };
+
+  // Find a real photo for the activity. A miss is a valid outcome, not an
+  // error, and never overwrites an existing thumbnail with a blank.
+  const askAIImage = async (di: number, ii: number) => {
+    setAiBusyKey(`${di}-${ii}:image`);
+    const item = trip.days[di].items[ii];
+    const dest = `${trip.dest}, ${trip.country}`;
+    try {
+      const image = await generateActivityImage(item.title, dest);
+      if (image) {
+        update((t) => setItemContent(t, di, ii, { image }));
+      } else {
+        showToast("No photo was found for this activity.");
+      }
+    } catch (e: unknown) {
+      showToast(
+        e instanceof Error ? e.message : "Could not search for a photo.",
       );
     } finally {
       setAiBusyKey("");
@@ -147,7 +137,8 @@ export function Editor({
         ii={editing.ii}
         update={update}
         onBack={closeEditing}
-        onAskAI={askAI}
+        onAskDescription={askAIDescription}
+        onAskImage={askAIImage}
         aiBusyKey={aiBusyKey}
         saving={saving}
       />
@@ -197,56 +188,48 @@ export function Editor({
             </span>
           )}
         </div>
-        <button
-          onClick={() => setTab(tab === "settings" ? "days" : "settings")}
-          aria-label={
-            tab === "settings" ? "Back to itinerary" : "Trip settings"
-          }
-          aria-pressed={tab === "settings"}
-          className={cn(
-            ui.chevBtn,
-            "h-[44px] w-[44px]",
-            tab === "settings" && "border-accent bg-accent",
-          )}
-        >
-          <Settings
-            size={20}
-            color={tab === "settings" ? "#fff" : "#7A6F60"}
-            strokeWidth={2.4}
-          />
-        </button>
+        {tab !== "settings" && (
+          <button
+            onClick={() => setTab("settings")}
+            aria-label="Trip settings"
+            className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
+          >
+            <Settings size={20} color="#7A6F60" strokeWidth={2.4} />
+          </button>
+        )}
       </div>
 
-      <div
-        className={cn(
-          "no-scrollbar",
-          "min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[18px] pt-1 pb-[26px]",
-        )}
-      >
-        {tab === "days" ? (
-          <DaysTab
-            trip={trip}
-            dayIndex={adminDay}
-            onSelectDay={goDay}
-            onPrevDay={() => goDay(adminDay - 1)}
-            onNextDay={() => goDay(adminDay + 1)}
-            update={update}
-            onOpenItem={(di, ii) => setEditing({ type: "item", di, ii })}
-            onOpenFlight={(di, fi) => setEditing({ type: "flight", di, fi })}
-            onOpenStay={(di) => setEditing({ type: "stay", di })}
-          />
-        ) : (
+      {tab === "days" ? (
+        // The day pager fills the area and scrolls each panel internally, so the
+        // whole page (header, strip, content) travels with the swipe.
+        <DaysTab
+          trip={trip}
+          dayIndex={adminDay}
+          onSelectDay={goDay}
+          onPrevDay={() => goDay(adminDay - 1)}
+          onNextDay={() => goDay(adminDay + 1)}
+          update={update}
+          onOpenItem={(di, ii) => setEditing({ type: "item", di, ii })}
+          onOpenFlight={(di, fi) => setEditing({ type: "flight", di, fi })}
+          onOpenStay={(di) => setEditing({ type: "stay", di })}
+        />
+      ) : (
+        <div
+          className={cn(
+            "no-scrollbar",
+            "min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[18px] pt-1 pb-[26px]",
+          )}
+        >
           <SettingsTab
             trip={trip}
             update={update}
             set={set}
             onPublish={handlePublish}
-            onPreview={() => onPreview(trip.id)}
             onToast={showToast}
             onDelete={handleDelete}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

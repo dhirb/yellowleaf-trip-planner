@@ -13,6 +13,8 @@ import { InstallPrompt } from "./InstallPrompt";
 import { TabBar, type TravelerScreen } from "./TabBar";
 import { useTimeFormat } from "../../hooks/useTimeFormat";
 import { useFontScale } from "../../hooks/useFontScale";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { useTripManifest } from "../../hooks/useTripManifest";
 
 /** Which card, if any, has been tapped open into its full-page detail view. */
 type OpenTarget =
@@ -25,31 +27,22 @@ export function TravelerApp({ trip }: { trip: Trip }) {
   const [tDay, setTDay] = useState(0);
   const [screen, setScreen] = useState<TravelerScreen>("day");
   const [open, setOpen] = useState<OpenTarget | null>(null);
-  const [prefLang, setPrefLang] = useState<string>(() => {
-    try {
-      const stored = localStorage.getItem(`yl.lang.${trip.id}`);
-      if (
-        stored === "en" ||
-        (trip.languages ?? []).some((l) => l.code === stored)
-      ) {
-        return stored as string;
-      }
-    } catch {
-      /* ignore storage errors */
-    }
-    return "en";
-  });
-
-  const changeLang = (code: string) => {
-    setPrefLang(code);
-    try {
-      localStorage.setItem(`yl.lang.${trip.id}`, code);
-    } catch {
-      /* ignore storage errors */
-    }
-  };
+  // Per-trip language choice, validated against the trip's available languages
+  // (English is always the implicit base).
+  const [prefLang, changeLang] = useLocalStorage<string>(
+    `yl.lang.${trip.id}`,
+    "en",
+    (raw) =>
+      raw === "en" || (trip.languages ?? []).some((l) => l.code === raw)
+        ? raw
+        : null,
+  );
   const { timeFormat, setTimeFormat } = useTimeFormat();
   const { fontScale, setFontScale } = useFontScale();
+
+  // Name the installable PWA after this trip (and open it straight to the
+  // trip), restoring the static manifest when the traveller leaves.
+  useTripManifest(trip.id, trip.title);
 
   const today = todayISO();
 
