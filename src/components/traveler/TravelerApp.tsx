@@ -9,7 +9,6 @@ import { SettingsScreen } from "./SettingsScreen";
 import { DetailScreen } from "./DetailScreen";
 import { FlightDetailScreen } from "./FlightDetailScreen";
 import { StayDetailScreen } from "./StayDetailScreen";
-import { InstallPrompt } from "./InstallPrompt";
 import { TabBar, type TravelerScreen } from "./TabBar";
 import { useTimeFormat } from "../../hooks/useTimeFormat";
 import { useFontScale } from "../../hooks/useFontScale";
@@ -132,9 +131,6 @@ export function TravelerApp({ trip }: { trip: Trip }) {
           setFontScale={setFontScale}
         />
       )}
-
-      {/* Browsing screens only — Settings has its own permanent install card. */}
-      {screen !== "settings" && <InstallPrompt />}
 
       <TabBar active={screen} onChange={(s) => setScreen(s)} />
     </div>

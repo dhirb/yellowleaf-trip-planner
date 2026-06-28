@@ -9,7 +9,6 @@ import {
 } from "../../lib/fontScale";
 import { ui } from "../../lib/ui";
 import { cn } from "../../lib/cn";
-import { InstallCard } from "./InstallPrompt";
 
 interface SettingsScreenProps {
   trip: Trip;
@@ -85,9 +84,6 @@ export function SettingsScreen({
         </div>
       </div>
       <div className="no-scrollbar flex-1 min-h-0 overflow-x-hidden overflow-y-auto px-[18px] pt-1 pb-[26px]">
-        {/* Install (hidden once installed / on unsupported browsers) */}
-        <InstallCard />
-
         {/* Language */}
         {languages.length > 0 && (
           <div className={cn(ui.padCard, "mb-4")}>
