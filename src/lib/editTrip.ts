@@ -103,6 +103,39 @@ export function moveItem(
   return next;
 }
 
+/**
+ * Index at which an item of the given `time` should slot into a day's
+ * (manually-ordered) item list, keeping earlier times first. `Item.time` is a
+ * zero-padded `"HH:MM"` string, so plain lexicographic comparison sorts
+ * correctly. Ties place the new item before the first later item.
+ */
+export function timeInsertIndex(items: Item[], time: string): number {
+  const at = items.findIndex((it) => it.time > time);
+  return at === -1 ? items.length : at;
+}
+
+/**
+ * Relocate an item to another day (e.g. a last-minute reschedule). The whole
+ * item object — including its `t` translation overrides — travels, and it is
+ * inserted into the target day by time order. No-op when the source and target
+ * are the same day, or when any index is out of range.
+ */
+export function moveItemToDay(
+  trip: Trip,
+  fromDi: number,
+  ii: number,
+  toDi: number,
+): Trip {
+  if (toDi === fromDi) return trip; // no-op: same day
+  const fromItems = trip.days[fromDi]?.items;
+  if (!fromItems || !fromItems[ii] || !trip.days[toDi]) return trip;
+  const next = clone(trip);
+  const [moved] = next.days[fromDi].items.splice(ii, 1);
+  const at = timeInsertIndex(next.days[toDi].items, moved.time);
+  next.days[toDi].items.splice(at, 0, moved);
+  return next;
+}
+
 export function updateFlight(
   trip: Trip,
   di: number,
