@@ -5,7 +5,11 @@ import {
   generateActivityDescription,
   generateActivityImage,
 } from "../../lib/ai";
-import { setItemContent } from "../../lib/editTrip";
+import {
+  moveItemToDay,
+  setItemContent,
+  timeInsertIndex,
+} from "../../lib/editTrip";
 import { softDeleteTrip } from "../../lib/trips";
 import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
@@ -111,6 +115,22 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
     }
   };
 
+  // Reassign the activity currently open in the editor to another day. The
+  // edit screen addresses items by (di, ii), so after the move we recompute the
+  // item's new location and keep the screen open on it. The target day differs
+  // from the source, so removing the item from the source day does not shift the
+  // target day's indices — the pre-move insertion index is the final position.
+  const moveEditingItemToDay = (toDi: number) => {
+    if (editing?.type !== "item") return;
+    const { di: fromDi, ii } = editing;
+    if (toDi === fromDi) return;
+    const moved = trip.days[fromDi].items[ii];
+    const newIi = timeInsertIndex(trip.days[toDi].items, moved.time);
+    update((t) => moveItemToDay(t, fromDi, ii, toDi));
+    setEditing({ type: "item", di: toDi, ii: newIi });
+    setAdminDay(toDi);
+  };
+
   const handlePublish = async () => {
     await publish();
     showToast("Published — travelers now see the latest itinerary.");
@@ -137,6 +157,7 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
         ii={editing.ii}
         update={update}
         onBack={closeEditing}
+        onChangeDay={moveEditingItemToDay}
         onAskDescription={askAIDescription}
         onAskImage={askAIImage}
         aiBusyKey={aiBusyKey}

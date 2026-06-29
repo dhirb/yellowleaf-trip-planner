@@ -1,5 +1,6 @@
 import type { ItemKind, ItemTranslation, Trip } from "../../types";
 import { imgFor } from "../../lib/dayView";
+import { bigDate } from "../../lib/date";
 import { cn } from "../../lib/cn";
 import {
   delItem,
@@ -21,6 +22,8 @@ interface ItemEditScreenProps {
   ii: number;
   update: (updater: (t: Trip) => Trip) => void;
   onBack: () => void;
+  /** Reassign this activity to another day (for last-minute reschedules). */
+  onChangeDay: (toDi: number) => void;
   /** Generate the activity description from its name. */
   onAskDescription: (di: number, ii: number) => void;
   /** Find a real photo for the activity thumbnail. */
@@ -43,6 +46,7 @@ export function ItemEditScreen({
   ii,
   update,
   onBack,
+  onChangeDay,
   onAskDescription,
   onAskImage,
   aiBusyKey,
@@ -61,6 +65,13 @@ export function ItemEditScreen({
   const thumb = imgFor(item);
   const langs = trip.languages ?? [];
   const dest = `${trip.dest}, ${trip.country}`;
+
+  // A trip with a single day has nowhere to move the activity to.
+  const canChangeDay = trip.days.length > 1;
+  const dayOptions = trip.days.map((d, i) => ({
+    value: String(i),
+    label: `Day ${i + 1} — ${bigDate(d.date)}`,
+  }));
 
   const { setTrans, translateInto } = makeTranslationHandlers<ItemTranslation>(
     update,
@@ -109,6 +120,19 @@ export function ItemEditScreen({
         <ImageIcon size={16} />
         {busyImage ? "Finding photo…" : "Find photo with AI"}
       </button>
+
+      {/* Day — reassign the activity to another day in the trip */}
+      {canChangeDay && (
+        <Field label="Day" className="mb-[18px]">
+          <Select
+            value={String(di)}
+            ariaLabel="Day"
+            options={dayOptions}
+            onChange={(v) => onChangeDay(Number(v))}
+            className={fieldInput}
+          />
+        </Field>
+      )}
 
       {/* Time + Ask AI */}
       <div className="mb-[18px] flex items-end gap-3">

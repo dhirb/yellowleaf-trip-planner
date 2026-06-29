@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { Currency, Trip } from "../src/types";
-import { moveContact, moveFlight, moveItem } from "../src/lib/editTrip";
+import {
+  moveContact,
+  moveFlight,
+  moveItem,
+  moveItemToDay,
+  timeInsertIndex,
+} from "../src/lib/editTrip";
 import {
   addTripLanguage,
   removeTripLanguage,
@@ -95,6 +101,115 @@ describe("moveItem", () => {
     const trip = fixture();
     const before = structuredClone(trip);
     const next = moveItem(trip, 0, 0, 2);
+    expect(trip).toEqual(before);
+    expect(next).not.toBe(trip);
+  });
+});
+
+/** Two contiguous days, so an item can be relocated across them. */
+function twoDayFixture(): Trip {
+  const t = fixture();
+  t.days = [
+    {
+      date: "2026-01-01",
+      theme: "Day 1",
+      weather: "",
+      stay: null,
+      flights: [],
+      items: [
+        { kind: "attraction", time: "09:00", title: "A0" },
+        { kind: "attraction", time: "10:00", title: "A1" },
+        { kind: "attraction", time: "11:00", title: "A2" },
+      ],
+    },
+    {
+      date: "2026-01-02",
+      theme: "Day 2",
+      weather: "",
+      stay: null,
+      flights: [],
+      items: [
+        { kind: "attraction", time: "08:00", title: "B0" },
+        { kind: "attraction", time: "12:00", title: "B1" },
+      ],
+    },
+  ];
+  return t;
+}
+
+const dayTitles = (t: Trip, di: number) => t.days[di].items.map((i) => i.title);
+
+describe("timeInsertIndex", () => {
+  const items = [
+    { kind: "attraction" as const, time: "08:00", title: "B0" },
+    { kind: "attraction" as const, time: "12:00", title: "B1" },
+  ];
+
+  it("returns 0 for an empty list", () => {
+    expect(timeInsertIndex([], "10:00")).toBe(0);
+  });
+
+  it("returns 0 when the time is earliest", () => {
+    expect(timeInsertIndex(items, "07:00")).toBe(0);
+  });
+
+  it("returns the length when the time is latest", () => {
+    expect(timeInsertIndex(items, "23:00")).toBe(2);
+  });
+
+  it("returns the middle index for an in-between time", () => {
+    expect(timeInsertIndex(items, "10:00")).toBe(1);
+  });
+});
+
+describe("moveItemToDay", () => {
+  it("removes the item from the source day", () => {
+    const next = moveItemToDay(twoDayFixture(), 0, 1, 1);
+    expect(dayTitles(next, 0)).toEqual(["A0", "A2"]);
+  });
+
+  it("inserts the moved item into the target day by time order", () => {
+    // A1 (10:00) slots between B0 (08:00) and B1 (12:00).
+    const next = moveItemToDay(twoDayFixture(), 0, 1, 1);
+    expect(dayTitles(next, 1)).toEqual(["B0", "A1", "B1"]);
+  });
+
+  it("appends when the moved item's time is latest in the target day", () => {
+    const trip = twoDayFixture();
+    trip.days[0].items[2].time = "23:00"; // A2 later than every day-2 item
+    const next = moveItemToDay(trip, 0, 2, 1);
+    expect(dayTitles(next, 1)).toEqual(["B0", "B1", "A2"]);
+  });
+
+  it("carries the item's translation map to the new day", () => {
+    const trip = twoDayFixture();
+    trip.days[0].items[1].t = { ja: { title: "A1-ja" } };
+    const next = moveItemToDay(trip, 0, 1, 1);
+    const moved = next.days[1].items.find((i) => i.title === "A1");
+    expect(moved?.t).toEqual({ ja: { title: "A1-ja" } });
+  });
+
+  it("is a no-op when source and target are the same day", () => {
+    const next = moveItemToDay(twoDayFixture(), 0, 1, 0);
+    expect(dayTitles(next, 0)).toEqual(["A0", "A1", "A2"]);
+  });
+
+  it("is a no-op when the item or day index is out of range", () => {
+    expect(dayTitles(moveItemToDay(twoDayFixture(), 0, 9, 1), 1)).toEqual([
+      "B0",
+      "B1",
+    ]);
+    expect(dayTitles(moveItemToDay(twoDayFixture(), 0, 0, 9), 0)).toEqual([
+      "A0",
+      "A1",
+      "A2",
+    ]);
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = twoDayFixture();
+    const before = structuredClone(trip);
+    const next = moveItemToDay(trip, 0, 1, 1);
     expect(trip).toEqual(before);
     expect(next).not.toBe(trip);
   });
