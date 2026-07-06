@@ -39,7 +39,7 @@ export function DetailScreen({
         <div className="text-body font-semibold text-muted">{view.place}</div>
       )}
       {item.note && (
-        <div className="mt-4 text-lead font-medium leading-[1.5] text-ink-soft [text-wrap:pretty]">
+        <div className="mt-4 whitespace-pre-line text-lead font-medium leading-[1.5] text-ink-soft [text-wrap:pretty]">
           {item.note}
         </div>
       )}

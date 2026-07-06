@@ -1,10 +1,76 @@
 import { describe, it, expect } from "vitest";
-import type { Item, Lang } from "../src/types";
+import type { Item, ItemKind, Lang } from "../src/types";
 import {
+  buildDescriptionPrompt,
   pickItemFields,
   sanitizeTranslations,
   translateField,
 } from "../src/lib/ai";
+
+describe("buildDescriptionPrompt", () => {
+  const base = { title: "Kinkaku-ji", dest: "Kyoto, Japan" } as const;
+
+  it("gives attractions tour-companion guidance with no length cap", () => {
+    const prompt = buildDescriptionPrompt({ ...base, kind: "attraction" });
+    expect(prompt).toContain("history");
+    expect(prompt).toContain("cultural");
+    expect(prompt).toContain("notice");
+    expect(prompt).not.toContain("under 40 words");
+  });
+
+  it("gives meals food-culture guidance", () => {
+    const prompt = buildDescriptionPrompt({ ...base, kind: "meal" });
+    expect(prompt).toContain("food culture");
+  });
+
+  it.each(["stay", "transport", "other"] as ItemKind[])(
+    "keeps %s short and practical",
+    (kind) => {
+      const prompt = buildDescriptionPrompt({ ...base, kind });
+      expect(prompt).toContain("2 to 3 sentences");
+    },
+  );
+
+  it("folds the place into the research location", () => {
+    const prompt = buildDescriptionPrompt({
+      ...base,
+      kind: "attraction",
+      place: "Gion",
+    });
+    expect(prompt).toContain('"Kinkaku-ji" in Gion, Kyoto, Japan');
+  });
+
+  it("omits a blank or absent place without a dangling comma", () => {
+    const absent = buildDescriptionPrompt({ ...base, kind: "attraction" });
+    const blank = buildDescriptionPrompt({
+      ...base,
+      kind: "attraction",
+      place: "  ",
+    });
+    for (const prompt of [absent, blank]) {
+      expect(prompt).toContain('"Kinkaku-ji" in Kyoto, Japan');
+      expect(prompt).not.toContain("undefined");
+    }
+  });
+
+  it('falls back to "this stop" for a blank title', () => {
+    const prompt = buildDescriptionPrompt({
+      title: "",
+      dest: "Kyoto, Japan",
+      kind: "attraction",
+    });
+    expect(prompt).toContain('"this stop"');
+  });
+
+  it.each(["attraction", "meal", "stay", "transport", "other"] as ItemKind[])(
+    "keeps the plain-text rendering contract for %s",
+    (kind) => {
+      const prompt = buildDescriptionPrompt({ ...base, kind });
+      expect(prompt).toContain("no markdown");
+      expect(prompt).toContain("blank line");
+    },
+  );
+});
 
 describe("pickItemFields", () => {
   it("returns only non-empty translatable fields", () => {

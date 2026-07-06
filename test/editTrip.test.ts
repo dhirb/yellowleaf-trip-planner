@@ -10,6 +10,7 @@ import {
 import {
   addTripLanguage,
   removeTripLanguage,
+  clearItemFieldTranslations,
   setItemTranslations,
   setDayTranslations,
   addCoOwner,
@@ -374,6 +375,35 @@ describe("language helpers", () => {
     const base = fixture();
     addTripLanguage(base, { code: "ja", label: "日本語" });
     expect(base.languages).toEqual([]);
+  });
+});
+
+describe("clearItemFieldTranslations", () => {
+  it("drops one field from every language, keeping the others", () => {
+    let t = setItemTranslations(fixture(), 0, 0, {
+      ja: { title: "あ", note: "旧" },
+      fr: { title: "A", note: "vieux" },
+    });
+    t = clearItemFieldTranslations(t, 0, 0, "note");
+    expect(t.days[0].items[0].t).toEqual({
+      ja: { title: "あ" },
+      fr: { title: "A" },
+    });
+  });
+
+  it("is a no-op when the item has no translations", () => {
+    const t = clearItemFieldTranslations(fixture(), 0, 0, "note");
+    expect(t.days[0].items[0].t).toBeUndefined();
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = setItemTranslations(fixture(), 0, 0, {
+      ja: { note: "旧" },
+    });
+    const before = structuredClone(trip);
+    const next = clearItemFieldTranslations(trip, 0, 0, "note");
+    expect(trip).toEqual(before);
+    expect(next.days[0].items[0].t).toEqual({ ja: {} });
   });
 });
 
