@@ -10,6 +10,20 @@ import { translateField } from "./ai";
  * - `setTrans(field)(code, value)` persists one hand-edited translation.
  * - `translateInto(field, value)()` fills every language for one field via AI.
  */
+/**
+ * Shape a flat `code → translated value` map (what {@link translateField}
+ * returns) into the per-language single-field override map that the
+ * `set*Translations` edit helpers expect.
+ */
+export function fieldTranslationMap<TTrans>(
+  field: string,
+  map: Record<string, string>,
+): Record<string, TTrans> {
+  return Object.fromEntries(
+    Object.entries(map).map(([code, v]) => [code, { [field]: v } as TTrans]),
+  );
+}
+
 export function makeTranslationHandlers<TTrans>(
   update: (updater: (t: Trip) => Trip) => void,
   commit: (t: Trip, map: Record<string, TTrans>) => Trip,
@@ -24,17 +38,7 @@ export function makeTranslationHandlers<TTrans>(
 
   const translateInto = (field: string, value: string) => async () => {
     const map = await translateField(field, value, langs, dest);
-    update((t) =>
-      commit(
-        t,
-        Object.fromEntries(
-          Object.entries(map).map(([code, v]) => [
-            code,
-            { [field]: v } as TTrans,
-          ]),
-        ),
-      ),
-    );
+    update((t) => commit(t, fieldTranslationMap<TTrans>(field, map)));
   };
 
   return { setTrans, translateInto };

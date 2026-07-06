@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Lang, Trip } from "../src/types";
-import { makeTranslationHandlers } from "../src/lib/translateHandlers";
+import type { ItemTranslation, Lang, Trip } from "../src/types";
+import {
+  fieldTranslationMap,
+  makeTranslationHandlers,
+} from "../src/lib/translateHandlers";
 import { translateField } from "../src/lib/ai";
 
 // Mock the AI module wholesale so the real one (and its firebase import) never
@@ -11,6 +14,24 @@ const langs: Lang[] = [
   { code: "ja", label: "日本語" },
   { code: "fr", label: "Français" },
 ];
+
+describe("fieldTranslationMap", () => {
+  it("shapes a flat code→value map into per-language field overrides", () => {
+    expect(
+      fieldTranslationMap<ItemTranslation>("note", {
+        ja: "説明",
+        fr: "Description",
+      }),
+    ).toEqual({
+      ja: { note: "説明" },
+      fr: { note: "Description" },
+    });
+  });
+
+  it("returns {} for an empty map", () => {
+    expect(fieldTranslationMap<ItemTranslation>("note", {})).toEqual({});
+  });
+});
 
 describe("makeTranslationHandlers", () => {
   beforeEach(() => vi.clearAllMocks());
