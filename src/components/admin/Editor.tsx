@@ -6,6 +6,7 @@ import {
   generateActivityImage,
 } from "../../lib/ai";
 import {
+  clearItemFieldTranslations,
   moveItemToDay,
   setItemContent,
   timeInsertIndex,
@@ -80,8 +81,22 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
     const item = trip.days[di].items[ii];
     const dest = `${trip.dest}, ${trip.country}`;
     try {
-      const note = await generateActivityDescription(item.title, dest);
-      update((t) => setItemContent(t, di, ii, { note }));
+      const note = await generateActivityDescription({
+        title: item.title,
+        dest,
+        kind: item.kind,
+        place: item.place,
+      });
+      // Also drop stale per-language note overrides, otherwise localize would
+      // keep showing non-English travelers the previous description.
+      update((t) =>
+        clearItemFieldTranslations(
+          setItemContent(t, di, ii, { note }),
+          di,
+          ii,
+          "note",
+        ),
+      );
     } catch (e: unknown) {
       showToast(
         e instanceof Error

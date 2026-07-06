@@ -356,6 +356,26 @@ export function removeTripLanguage(trip: Trip, code: string): Trip {
   return next;
 }
 
+/**
+ * Drop one field's override from every language on an item. Used when the
+ * English base is regenerated (e.g. "Ask AI" rewrites the note): a stale
+ * translation would otherwise shadow the new text for non-English travelers,
+ * since localize prefers any non-empty override. Cleared languages fall back
+ * to the English base until re-translated.
+ */
+export function clearItemFieldTranslations(
+  trip: Trip,
+  di: number,
+  ii: number,
+  field: keyof ItemTranslation,
+): Trip {
+  const next = clone(trip);
+  const t = next.days[di].items[ii].t;
+  if (!t) return trip;
+  for (const code of Object.keys(t)) delete t[code][field];
+  return next;
+}
+
 export function setItemTranslations(
   trip: Trip,
   di: number,

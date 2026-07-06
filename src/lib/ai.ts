@@ -1,6 +1,6 @@
 import { app } from "../firebase";
 import { searchActivityImage } from "./imageSearch";
-import type { Item, ItemTranslation, Lang } from "../types";
+import type { Item, ItemKind, ItemTranslation, Lang } from "../types";
 
 /**
  * Admin "Ask AI" assist, powered by Firebase AI Logic (Gemini Developer API backend).
@@ -29,20 +29,67 @@ async function getAiInstance() {
   return aiPromise;
 }
 
+export interface DescriptionParams {
+  title: string;
+  /** "Dest, Country", e.g. "Kyoto, Japan". */
+  dest: string;
+  kind: ItemKind;
+  place?: string;
+}
+
 /**
- * Research an activity with Google Search and write a warm, short description
- * for an elderly traveller. Grounding keeps the details factual (real opening
- * context, what the place actually is) instead of plausible-sounding invention.
+ * Per-kind content guidance. Attractions read like a self-guided tour companion
+ * and meals cover food culture; stay/transport/other stay short and practical.
+ */
+const KIND_GUIDANCE: Record<ItemKind, string> = {
+  attraction:
+    "Write an educational self-guided tour companion. Cover, in this order: a short " +
+    "introduction to what the place is; its history (when it came to be, why, and any key " +
+    "people or events); its cultural or religious significance; and what to notice or look " +
+    "out for during the visit. Use 2 to 4 short paragraphs. There is no length limit, but " +
+    "every sentence must be worth reading aloud.",
+  meal:
+    "Write about the food culture. Explain what the dish or cuisine is, where it comes from " +
+    "and any story or tradition behind it, and how locals usually enjoy it. Use 1 to 2 short paragraphs.",
+  stay:
+    "Write a short, practical description (2 to 3 sentences) of what kind of place this is " +
+    "and what to expect on arrival.",
+  transport:
+    "Write a short, practical description (2 to 3 sentences) of this journey and what to expect.",
+  other:
+    "Write a short, practical description (2 to 3 sentences) of what this is and what to expect.",
+};
+
+/** Build the kind-adaptive "Ask AI" description prompt. Pure, so it is unit-testable. */
+export function buildDescriptionPrompt({
+  title,
+  dest,
+  kind,
+  place,
+}: DescriptionParams): string {
+  const safeTitle = (title || "this stop").trim();
+  const p = place?.trim();
+  const where = p ? `${p}, ${dest}` : dest;
+  return (
+    `Research "${safeTitle}" in ${where} and base everything on what the place actually is — ` +
+    `no invented details. ${KIND_GUIDANCE[kind] ?? KIND_GUIDANCE.other} ` +
+    `The reader is an elderly traveller: warm, simple, reassuring language and short sentences. ` +
+    `Plain text only — no markdown, no headings, no bullet points, no asterisks. ` +
+    `Separate paragraphs with one blank line. Return only the description, with no quotes or preamble.`
+  );
+}
+
+/**
+ * Research an activity with Google Search and write a description adapted to
+ * the item kind: attractions get an educational tour-companion write-up
+ * (history, cultural significance, what to notice), meals get food-culture
+ * context, and the rest a short practical blurb. Grounding keeps the details
+ * factual instead of plausible-sounding invention.
  */
 export async function generateActivityDescription(
-  title: string,
-  dest: string,
+  params: DescriptionParams,
 ): Promise<string> {
-  const safeTitle = (title || "this stop").trim();
-  const prompt =
-    `Research "${safeTitle}" in ${dest} and write a warm, simple description ` +
-    `(2 sentences, under 40 words) for an elderly traveller. Base it on what the ` +
-    `place actually is. Plain, reassuring language. Return only the description, no quotes.`;
+  const prompt = buildDescriptionPrompt(params);
 
   const [{ getGenerativeModel }, ai] = await Promise.all([
     import("firebase/ai"),
@@ -121,8 +168,10 @@ async function translateFields(
   const prompt =
     `Translate these travel itinerary fields into the target languages. ` +
     `${context ? `Context: ${context}. ` : ""}` +
-    `Keep proper nouns natural for each language and keep wording concise and warm ` +
-    `for an elderly traveller. Return JSON keyed by language code, each value an ` +
+    `Keep proper nouns natural for each language and keep the warm, simple tone of ` +
+    `the original, written for an elderly traveller. Translate faithfully without ` +
+    `shortening or summarising. Preserve paragraph breaks (blank lines) and plain ` +
+    `text — no markdown. Return JSON keyed by language code, each value an ` +
     `object using the same field keys.\n` +
     `Target languages: ${langs.map((l) => `${l.code} (${l.label})`).join(", ")}.\n` +
     `Fields:\n${JSON.stringify(fields, null, 2)}`;
