@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { ChevronLeft, Settings } from "lucide-react";
 import { useTripEditor } from "../../hooks/useTripEditor";
+import type { ItemTranslation } from "../../types";
 import {
   generateActivityDescription,
   generateActivityImage,
+  translateField,
 } from "../../lib/ai";
+import { fieldTranslationMap } from "../../lib/translateHandlers";
 import {
   clearItemFieldTranslations,
   moveItemToDay,
   setItemContent,
+  setItemTranslations,
   timeInsertIndex,
 } from "../../lib/editTrip";
 import { softDeleteTrip } from "../../lib/trips";
@@ -72,10 +76,10 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
     setAdminDay(Math.max(0, Math.min(dayCount - 1, i)));
 
   // Two independent AI assists, each with its own busy key so one can run (and
-  // show its spinner) without disabling the other. Translation is intentionally
-  // not batched here — it lives per-field on the edit screen.
+  // show its spinner) without disabling the other.
 
-  // Write a description from the activity's name.
+  // Write a description from the activity's name, then translate it into the
+  // trip's languages.
   const askAIDescription = async (di: number, ii: number) => {
     setAiBusyKey(`${di}-${ii}:note`);
     const item = trip.days[di].items[ii];
@@ -87,8 +91,8 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
         kind: item.kind,
         place: item.place,
       });
-      // Also drop stale per-language note overrides, otherwise localize would
-      // keep showing non-English travelers the previous description.
+      // Apply the English note right away, dropping stale per-language note
+      // overrides so no language keeps showing the previous description.
       update((t) =>
         clearItemFieldTranslations(
           setItemContent(t, di, ii, { note }),
@@ -97,6 +101,26 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
           "note",
         ),
       );
+      // Then fill the translations. A failure here keeps the English note —
+      // languages without an override fall back to it — so it only toasts.
+      const langs = trip.languages ?? [];
+      if (langs.length > 0) {
+        try {
+          const map = await translateField("note", note, langs, dest);
+          update((t) =>
+            setItemTranslations(
+              t,
+              di,
+              ii,
+              fieldTranslationMap<ItemTranslation>("note", map),
+            ),
+          );
+        } catch {
+          showToast(
+            "Description saved, but translating it failed. Use Translate with AI on the field.",
+          );
+        }
+      }
     } catch (e: unknown) {
       showToast(
         e instanceof Error
