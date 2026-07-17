@@ -56,7 +56,7 @@ export function blankTrip(ownerId: string): TripData {
       homeSymbol: "$",
       perHome: 1,
     },
-    hotel: { name: "", desc: "", address: "", phone: "" },
+    stays: [],
     contacts: [],
     phrases: [],
     days: [
@@ -65,7 +65,6 @@ export function blankTrip(ownerId: string): TripData {
         theme: "Day 1",
         weather: "",
         items: [],
-        stay: null,
         flights: [],
       },
     ],

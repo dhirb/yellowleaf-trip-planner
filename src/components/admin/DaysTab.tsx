@@ -11,7 +11,8 @@ interface DaysTabProps {
   update: (updater: (t: Trip) => Trip) => void;
   onOpenItem: (di: number, ii: number) => void;
   onOpenFlight: (di: number, fi: number) => void;
-  onOpenStay: (di: number) => void;
+  onOpenStay: (si: number) => void;
+  onGoToStays: () => void;
 }
 
 /**

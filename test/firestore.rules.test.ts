@@ -51,7 +51,7 @@ function tripDoc(
       homeSymbol: "$",
       perHome: 150,
     },
-    hotel: { name: "", desc: "", address: "", phone: "" },
+    stays: [],
     contacts: [],
     phrases: [],
     days: [
@@ -60,7 +60,6 @@ function tripDoc(
         theme: "Day 1",
         weather: "",
         items: [],
-        stay: null,
         flights: [],
       },
     ],

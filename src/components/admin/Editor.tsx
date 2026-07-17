@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, Settings } from "lucide-react";
+import { BedDouble, ChevronLeft, Settings } from "lucide-react";
 import { useTripEditor } from "../../hooks/useTripEditor";
 import type { ItemTranslation } from "../../types";
 import {
@@ -19,6 +19,7 @@ import { softDeleteTrip } from "../../lib/trips";
 import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
 import { DaysTab } from "./DaysTab";
+import { StaysTab } from "./StaysTab";
 import { SettingsTab } from "./SettingsTab";
 import { ItemEditScreen } from "./ItemEditScreen";
 import { FlightEditScreen } from "./FlightEditScreen";
@@ -32,16 +33,22 @@ interface EditorProps {
   onDeleted: () => void;
 }
 
+/** Header title per tab; the itinerary shows the trip's own name instead. */
+const TAB_TITLE: Partial<Record<"days" | "stays" | "settings", string>> = {
+  stays: "Accommodation",
+  settings: "Settings",
+};
+
 /** Which entity (if any) is open in a full-screen edit screen. */
 type Editing =
   | { type: "item"; di: number; ii: number }
   | { type: "flight"; di: number; fi: number }
-  | { type: "stay"; di: number }
+  | { type: "stay"; si: number }
   | null;
 
 export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
   const editor = useTripEditor(tripId);
-  const [tab, setTab] = useState<"days" | "settings">("days");
+  const [tab, setTab] = useState<"days" | "stays" | "settings">("days");
   const [adminDay, setAdminDay] = useState(0);
   const [aiBusyKey, setAiBusyKey] = useState("");
   const [editing, setEditing] = useState<Editing>(null);
@@ -220,8 +227,10 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
     return (
       <StayEditScreen
         trip={trip}
-        di={editing.di}
+        si={editing.si}
         update={update}
+        set={set}
+        onToast={showToast}
         onBack={closeEditing}
         saving={saving}
       />
@@ -232,30 +241,37 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
     <div className="flex h-full flex-col bg-app-bg">
       <div className="flex shrink-0 items-center gap-[10px] px-4 pt-[max(env(safe-area-inset-top),14px)] pb-3">
         <button
-          onClick={() => (tab === "settings" ? setTab("days") : onBack())}
-          aria-label={
-            tab === "settings" ? "Back to itinerary" : "Back to trips"
-          }
+          onClick={() => (tab === "days" ? onBack() : setTab("days"))}
+          aria-label={tab === "days" ? "Back to trips" : "Back to itinerary"}
           className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
         >
           <ChevronLeft size={22} color="#7A6F60" strokeWidth={2.6} />
         </button>
         <div className="min-w-0 flex-1 overflow-hidden text-[20px] font-extrabold tracking-[-0.3px] text-ellipsis whitespace-nowrap">
-          {tab === "settings" ? "Settings" : trip.title}
+          {TAB_TITLE[tab] ?? trip.title}
           {saving && (
             <span className="ml-2 text-[12px] font-semibold text-fainter">
               saving…
             </span>
           )}
         </div>
-        {tab !== "settings" && (
-          <button
-            onClick={() => setTab("settings")}
-            aria-label="Trip settings"
-            className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
-          >
-            <Settings size={20} color="#7A6F60" strokeWidth={2.4} />
-          </button>
+        {tab === "days" && (
+          <>
+            <button
+              onClick={() => setTab("stays")}
+              aria-label="Accommodation"
+              className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
+            >
+              <BedDouble size={20} color="#7A6F60" strokeWidth={2.4} />
+            </button>
+            <button
+              onClick={() => setTab("settings")}
+              aria-label="Trip settings"
+              className={cn(ui.chevBtn, "h-[44px] w-[44px]")}
+            >
+              <Settings size={20} color="#7A6F60" strokeWidth={2.4} />
+            </button>
+          </>
         )}
       </div>
 
@@ -271,7 +287,8 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
           update={update}
           onOpenItem={(di, ii) => setEditing({ type: "item", di, ii })}
           onOpenFlight={(di, fi) => setEditing({ type: "flight", di, fi })}
-          onOpenStay={(di) => setEditing({ type: "stay", di })}
+          onOpenStay={(si) => setEditing({ type: "stay", si })}
+          onGoToStays={() => setTab("stays")}
         />
       ) : (
         <div
@@ -280,14 +297,22 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
             "min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[18px] pt-1 pb-[26px]",
           )}
         >
-          <SettingsTab
-            trip={trip}
-            update={update}
-            set={set}
-            onPublish={handlePublish}
-            onToast={showToast}
-            onDelete={handleDelete}
-          />
+          {tab === "stays" ? (
+            <StaysTab
+              trip={trip}
+              update={update}
+              onOpenStay={(si) => setEditing({ type: "stay", si })}
+            />
+          ) : (
+            <SettingsTab
+              trip={trip}
+              update={update}
+              set={set}
+              onPublish={handlePublish}
+              onToast={showToast}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       )}
     </div>

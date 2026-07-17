@@ -32,7 +32,6 @@ describe("buildViewItems", () => {
     theme: "",
     weather: "",
     items,
-    stay: null,
     flights: [],
   });
 

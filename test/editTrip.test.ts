@@ -21,6 +21,12 @@ import {
   delLayover,
   updateFlight,
   updateStay,
+  addStay,
+  delStay,
+  setStayDates,
+  setStayTranslations,
+  setTripStart,
+  setTripEnd,
 } from "../src/lib/editTrip";
 
 const currency: Currency = {
@@ -43,7 +49,7 @@ function fixture(): Trip {
     published: true,
     languages: [],
     currency,
-    hotel: { name: "" },
+    stays: [],
     contacts: [
       { label: "C0", value: "", kind: "other" },
       { label: "C1", value: "", kind: "other" },
@@ -55,7 +61,6 @@ function fixture(): Trip {
         date: "2026-01-01",
         theme: "Day 1",
         weather: "",
-        stay: null,
         items: [
           { kind: "attraction", time: "09:00", title: "A0" },
           { kind: "attraction", time: "10:00", title: "A1" },
@@ -115,7 +120,6 @@ function twoDayFixture(): Trip {
       date: "2026-01-01",
       theme: "Day 1",
       weather: "",
-      stay: null,
       flights: [],
       items: [
         { kind: "attraction", time: "09:00", title: "A0" },
@@ -127,7 +131,6 @@ function twoDayFixture(): Trip {
       date: "2026-01-02",
       theme: "Day 2",
       weather: "",
-      stay: null,
       flights: [],
       items: [
         { kind: "attraction", time: "08:00", title: "B0" },
@@ -296,13 +299,44 @@ describe("updateFlight", () => {
   });
 });
 
+describe("addStay", () => {
+  it("starts on the trip's first day when there is nothing to follow", () => {
+    const t = addStay(fixture());
+    expect(t.stays).toHaveLength(1);
+    expect(t.stays[0]).toMatchObject({
+      name: "New stay",
+      checkIn: "2026-01-01",
+      checkOut: "2026-01-02",
+    });
+  });
+
+  it("chains the next stay off the latest check-out", () => {
+    let t = addStay(fixture());
+    t = setStayDates(t, 0, "2026-01-01", "2026-01-04") as Trip;
+    t = addStay(t);
+    expect(t.stays[1]).toMatchObject({
+      checkIn: "2026-01-04",
+      checkOut: "2026-01-05",
+    });
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = fixture();
+    const before = structuredClone(trip);
+    const next = addStay(trip);
+    expect(trip).toEqual(before);
+    expect(next).not.toBe(trip);
+  });
+});
+
 describe("updateStay", () => {
-  it("sets address, phone, and note on a fresh stay", () => {
-    let t = updateStay(fixture(), 0, "name", "Orange Hotel");
+  it("sets address, phone, and note on a stay", () => {
+    let t = addStay(fixture());
+    t = updateStay(t, 0, "name", "Orange Hotel");
     t = updateStay(t, 0, "address", "解放北路960号");
     t = updateStay(t, 0, "phone", "+86 20 1234 5678");
     t = updateStay(t, 0, "note", "2 rooms, cash only.");
-    expect(t.days[0].stay).toMatchObject({
+    expect(t.stays[0]).toMatchObject({
       name: "Orange Hotel",
       address: "解放北路960号",
       phone: "+86 20 1234 5678",
@@ -311,10 +345,78 @@ describe("updateStay", () => {
   });
 
   it("does not mutate the input trip", () => {
-    const trip = fixture();
+    const trip = addStay(fixture());
     const before = structuredClone(trip);
     updateStay(trip, 0, "address", "somewhere");
     expect(trip).toEqual(before);
+  });
+});
+
+describe("setStayDates", () => {
+  it("re-dates the stay", () => {
+    const t = setStayDates(addStay(fixture()), 0, "2026-01-03", "2026-01-06");
+    expect(t?.stays[0]).toMatchObject({
+      checkIn: "2026-01-03",
+      checkOut: "2026-01-06",
+    });
+  });
+
+  it("rejects a range holding no nights", () => {
+    const trip = addStay(fixture());
+    expect(setStayDates(trip, 0, "2026-01-03", "2026-01-03")).toBe(null);
+    expect(setStayDates(trip, 0, "2026-01-03", "2026-01-02")).toBe(null);
+  });
+
+  it("passes the trip through when a date is blank", () => {
+    const trip = addStay(fixture());
+    expect(setStayDates(trip, 0, "", "2026-01-06")).toBe(trip);
+  });
+
+  it("allows a check-out one day past the end of the trip", () => {
+    // The last day of the trip is a night slept, so its stay checks out the
+    // morning after — outside `days` by design.
+    const t = setStayDates(addStay(fixture()), 0, "2026-01-01", "2026-01-02");
+    expect(t?.stays[0].checkOut).toBe("2026-01-02");
+  });
+});
+
+describe("delStay", () => {
+  it("removes the stay and shifts the later ones down", () => {
+    let t = addStay(fixture());
+    t = updateStay(t, 0, "name", "First");
+    t = addStay(t);
+    t = updateStay(t, 1, "name", "Second");
+    t = delStay(t, 0);
+    expect(t.stays.map((s) => s.name)).toEqual(["Second"]);
+  });
+
+  it("does not mutate the input trip", () => {
+    const trip = addStay(fixture());
+    const before = structuredClone(trip);
+    delStay(trip, 0);
+    expect(trip).toEqual(before);
+  });
+
+  it("is a no-op for an out-of-range index", () => {
+    // `stayIndexForDate` reports a miss as -1; splice(-1) would drop the last
+    // stay rather than nothing.
+    const base = addStay(fixture());
+    expect(delStay(base, -1)).toBe(base);
+    expect(delStay(base, 5)).toBe(base);
+  });
+});
+
+describe("stay ops guard an out-of-range index", () => {
+  it("updateStay and setStayDates return the input unchanged", () => {
+    const base = addStay(fixture());
+    expect(updateStay(base, -1, "name", "x")).toBe(base);
+    expect(updateStay(base, 5, "name", "x")).toBe(base);
+    expect(setStayDates(base, -1, "2026-01-01", "2026-01-03")).toBe(base);
+  });
+
+  it("setStayTranslations returns the input unchanged", () => {
+    const base = addStay(fixture());
+    expect(setStayTranslations(base, 5, { ja: { name: "ホテル" } })).toBe(base);
   });
 });
 
@@ -362,19 +464,67 @@ describe("language helpers", () => {
   });
 
   it("removing a language prunes its translations everywhere", () => {
-    let t = addTripLanguage(fixture(), { code: "ja", label: "日本語" });
+    let t = addTripLanguage(addStay(fixture()), {
+      code: "ja",
+      label: "日本語",
+    });
     t = setItemTranslations(t, 0, 0, { ja: { title: "あ" } });
     t = setDayTranslations(t, 0, { ja: { theme: "日" } });
+    t = setStayTranslations(t, 0, { ja: { name: "ホテル" } });
     t = removeTripLanguage(t, "ja");
     expect(t.languages).toEqual([]);
     expect(t.days[0].items[0].t?.ja).toBeUndefined();
     expect(t.days[0].t?.ja).toBeUndefined();
+    expect(t.stays[0].t?.ja).toBeUndefined();
   });
 
   it("does not mutate the input trip", () => {
     const base = fixture();
     addTripLanguage(base, { code: "ja", label: "日本語" });
     expect(base.languages).toEqual([]);
+  });
+});
+
+describe("setTripStart", () => {
+  it("shifts the stays along with the days", () => {
+    let t = addStay(fixture());
+    t = setStayDates(t, 0, "2026-01-01", "2026-01-04") as Trip;
+    t = setTripStart(t, "2026-01-08");
+    expect(t.days[0].date).toBe("2026-01-08");
+    expect(t.stays[0]).toMatchObject({
+      checkIn: "2026-01-08",
+      checkOut: "2026-01-11",
+    });
+  });
+
+  it("shifts backwards too", () => {
+    let t = addStay(fixture());
+    t = setTripStart(t, "2025-12-30");
+    expect(t.stays[0].checkIn).toBe("2025-12-30");
+  });
+
+  it("is a no-op for the same start date", () => {
+    const base = addStay(fixture());
+    expect(setTripStart(base, "2026-01-01")).toBe(base);
+  });
+});
+
+describe("setTripEnd", () => {
+  it("leaves a stranded stay alone rather than clamping it", () => {
+    // Clamping would silently shorten a booking the admin never touched.
+    let t = setTripEnd(fixture(), "2026-01-05") as Trip;
+    t = addStay(t);
+    t = setStayDates(t, 0, "2026-01-04", "2026-01-06") as Trip;
+    t = setTripEnd(t, "2026-01-02") as Trip;
+    expect(t.days).toHaveLength(2);
+    expect(t.stays[0]).toMatchObject({
+      checkIn: "2026-01-04",
+      checkOut: "2026-01-06",
+    });
+  });
+
+  it("rejects an end before the start", () => {
+    expect(setTripEnd(fixture(), "2025-12-31")).toBe(null);
   });
 });
 

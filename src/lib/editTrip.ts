@@ -213,21 +213,66 @@ export function moveFlight(
 
 export function updateStay(
   trip: Trip,
-  di: number,
+  si: number,
   field: "name" | "desc" | "address" | "phone" | "note",
   value: string,
 ): Trip {
+  if (!trip.stays[si]) return trip;
   const next = clone(trip);
-  const day = next.days[di];
-  if (!day.stay) day.stay = { name: "", desc: "", address: "", phone: "" };
-  day.stay[field] = value;
+  next.stays[si][field] = value;
   return next;
 }
 
-/** Remove a day's accommodation entirely. */
-export function clearStay(trip: Trip, di: number): Trip {
+/**
+ * Add an accommodation, defaulting to the night after the last one ends so a
+ * run of hotels can be entered without touching the dates. Falls back to the
+ * first day of the trip when there is nothing to follow.
+ */
+export function addStay(trip: Trip): Trip {
+  const latest = trip.stays.reduce(
+    (acc, s) => (s.checkOut > acc ? s.checkOut : acc),
+    "",
+  );
+  const checkIn = latest || trip.days[0]?.date;
+  if (!checkIn) return trip; // no days to date a stay against
   const next = clone(trip);
-  next.days[di].stay = null;
+  next.stays.push({
+    name: "New stay",
+    desc: "",
+    address: "",
+    phone: "",
+    checkIn,
+    checkOut: addDays(checkIn, 1),
+  });
+  return next;
+}
+
+export function delStay(trip: Trip, si: number): Trip {
+  // Guarded because `stayIndexForDate` reports a miss as -1, and splice(-1) would
+  // quietly drop the last stay rather than nothing.
+  if (!trip.stays[si]) return trip;
+  const next = clone(trip);
+  next.stays.splice(si, 1);
+  return next;
+}
+
+/**
+ * Re-date an accommodation. Returns null when the range holds no nights, which
+ * the caller surfaces as a message — mirroring `setTripEnd`.
+ *
+ * `checkOut` may legitimately fall one day past the end of the trip: a stay
+ * covering the final night checks out the morning after it.
+ */
+export function setStayDates(
+  trip: Trip,
+  si: number,
+  checkIn: string,
+  checkOut: string,
+): Trip | null {
+  if (!checkIn || !checkOut || !trip.stays[si]) return trip;
+  if (daysBetween(checkIn, checkOut) < 1) return null;
+  const next = clone(trip);
+  next.stays[si] = { ...next.stays[si], checkIn, checkOut };
   return next;
 }
 
@@ -261,17 +306,32 @@ export function moveContact(trip: Trip, from: number, to: number): Trip {
   return next;
 }
 
-/** Shift the whole trip so day 0 starts on `newStart`. */
+/**
+ * Shift the whole trip so day 0 starts on `newStart`. Stays travel with the
+ * days by the same delta, or they would detach from the nights they cover.
+ */
 export function setTripStart(trip: Trip, newStart: string): Trip {
   if (!newStart) return trip;
   const delta = daysBetween(trip.days[0].date, newStart);
   if (delta === 0) return trip;
   const next = clone(trip);
   next.days = next.days.map((d) => ({ ...d, date: addDays(d.date, delta) }));
+  next.stays = next.stays.map((s) => ({
+    ...s,
+    checkIn: addDays(s.checkIn, delta),
+    checkOut: addDays(s.checkOut, delta),
+  }));
   return next;
 }
 
-/** Grow/shrink the trip to end on `newEnd`. Returns null if the date is before the start. */
+/**
+ * Grow/shrink the trip to end on `newEnd`. Returns null if the date is before
+ * the start.
+ *
+ * Stays are left alone. Shrinking can strand one past the last day, where it
+ * simply covers no night and the editor flags it — better than clamping it,
+ * which would silently shorten a booking the admin never touched.
+ */
 export function setTripEnd(trip: Trip, newEnd: string): Trip | null {
   if (!newEnd) return trip;
   const start = trip.days[0].date;
@@ -286,7 +346,6 @@ export function setTripEnd(trip: Trip, newEnd: string): Trip | null {
       theme: "New day",
       weather: "",
       items: [],
-      stay: null,
       flights: [],
     });
   }
@@ -349,10 +408,9 @@ export function removeTripLanguage(trip: Trip, code: string): Trip {
   };
   for (const d of next.days) {
     for (const it of d.items) prune(it);
-    prune(d.stay);
     prune(d);
   }
-  prune(next.hotel);
+  for (const s of next.stays) prune(s);
   return next;
 }
 
@@ -390,11 +448,11 @@ export function setItemTranslations(
 
 export function setStayTranslations(
   trip: Trip,
-  di: number,
+  si: number,
   map: Record<string, StayTranslation>,
 ): Trip {
   const next = clone(trip);
-  const stay = next.days[di].stay;
+  const stay = next.stays[si];
   if (!stay) return trip;
   stay.t = mergeT<StayTranslation>(stay.t, map);
   return next;
