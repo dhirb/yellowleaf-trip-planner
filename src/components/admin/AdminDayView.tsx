@@ -1,6 +1,7 @@
 import type { DayTranslation, Trip } from "../../types";
-import { bigDate, type TimeFormat } from "../../lib/date";
+import { bigDate, rangeLabel, type TimeFormat } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
+import { nightOf, stayIndexForDate, stayNights } from "../../lib/stays";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { ui } from "../../lib/ui";
@@ -30,7 +31,10 @@ interface AdminDayViewProps {
   update: (updater: (t: Trip) => Trip) => void;
   onOpenItem: (di: number, ii: number) => void;
   onOpenFlight: (di: number, fi: number) => void;
-  onOpenStay: (di: number) => void;
+  /** Open the trip-level stay covering this day, by its index into `trip.stays`. */
+  onOpenStay: (si: number) => void;
+  /** Leave for the Stays list, where accommodation is added and dated. */
+  onGoToStays: () => void;
 }
 
 // Admin cards mirror the traveler view; native time inputs in the edit screens
@@ -94,6 +98,7 @@ export function AdminDayView({
   onOpenItem,
   onOpenFlight,
   onOpenStay,
+  onGoToStays,
 }: AdminDayViewProps) {
   const di = Math.max(0, Math.min(dayIndex, trip.days.length - 1));
   const day = trip.days[di];
@@ -101,7 +106,10 @@ export function AdminDayView({
   const langs = trip.languages ?? [];
   const flights = day.flights ?? [];
   const viewItems = buildViewItems(day, "en");
-  const stay = day.stay;
+  // Accommodation is trip-level and dated, so the day only reports which stay
+  // covers it — editing happens on the Stays list.
+  const si = stayIndexForDate(trip.stays, day.date);
+  const stay = si === -1 ? null : trip.stays[si];
 
   const setThemeTrans = (code: string, value: string) =>
     update((t) =>
@@ -250,17 +258,17 @@ export function AdminDayView({
           <div className="mb-2 mt-4">
             <SectionLabel color="#3B5B8C">Accommodation</SectionLabel>
           </div>
-          {stay?.name ? (
+          {stay ? (
             <StayCard
               name={stay.name}
-              sub={stay.desc ?? stay.note ?? ""}
-              onOpen={() => onOpenStay(di)}
+              sub={`Night ${nightOf(stay, day.date)} of ${stayNights(stay)} · ${rangeLabel(stay.checkIn, stay.checkOut)}`}
+              onOpen={() => onOpenStay(si)}
             />
           ) : (
             <AddRow
               label="Add accommodation"
               color="#3B5B8C"
-              onClick={() => onOpenStay(di)}
+              onClick={onGoToStays}
             />
           )}
         </div>

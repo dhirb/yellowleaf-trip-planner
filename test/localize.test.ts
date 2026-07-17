@@ -48,6 +48,8 @@ describe("localizeStay", () => {
     name: "Hotel Granvia",
     desc: "By the station",
     note: "Cash only",
+    checkIn: "2026-01-01",
+    checkOut: "2026-01-03",
     t: { ja: { name: "ホテルグランヴィア", note: "現金のみ" } },
   };
   it("merges the translated name and keeps English desc", () => {
@@ -72,7 +74,6 @@ describe("localizeDayTheme", () => {
     theme: "Arrival",
     weather: "",
     items: [],
-    stay: null,
     flights: [],
     t: { ja: { theme: "到着" } },
   } as unknown as Day;

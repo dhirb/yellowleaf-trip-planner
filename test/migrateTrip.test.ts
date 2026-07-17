@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTrip, type RawTripData } from "../src/lib/migrateTrip";
+import {
+  normalizeTrip,
+  type RawStay,
+  type RawTripData,
+} from "../src/lib/migrateTrip";
+import { addDays } from "../src/lib/date";
+import { stayForDate } from "../src/lib/stays";
+import { chinaTrip } from "../src/data/chinaTrip";
 
 function legacy(): RawTripData {
   return {
@@ -53,11 +60,16 @@ describe("normalizeTrip", () => {
     expect("local" in item).toBe(false);
   });
 
-  it("folds stay.localName and hotel.localName into t[code].name", () => {
+  it("folds stay.localName into t[code].name on the lifted stay", () => {
     const out = normalizeTrip(legacy());
-    expect(out.days[0].stay?.t?.ja?.name).toBe("グランヴィア");
-    expect(out.hotel.t?.ja?.name).toBe("グランヴィア");
-    expect("localName" in (out.days[0].stay as object)).toBe(false);
+    expect(out.stays[0].t?.ja?.name).toBe("グランヴィア");
+    expect("localName" in (out.stays[0] as object)).toBe(false);
+  });
+
+  it("drops the per-day stay and the legacy trip-wide hotel", () => {
+    const out = normalizeTrip(legacy());
+    expect("stay" in (out.days[0] as object)).toBe(false);
+    expect("hotel" in (out as object)).toBe(false);
   });
 
   it("leaves the phrasebook untouched", () => {
@@ -146,6 +158,7 @@ describe("normalizeTrip", () => {
     const twice = normalizeTrip(once as unknown as RawTripData);
     expect(twice.languages).toEqual(once.languages);
     expect(twice.days[0].items[0].t?.ja?.title).toBe("金閣寺");
+    expect(twice.stays).toEqual(once.stays);
   });
 
   it("defaults languages to [] when absent", () => {
@@ -173,5 +186,127 @@ describe("normalizeTrip", () => {
     expect(normalizeTrip(raw).languages).toEqual([
       { code: "xx", label: "Custom (Lang)" },
     ]);
+  });
+});
+
+/** A trip whose days carry `stay`, the shape before stays moved trip-level. */
+function withDayStays(stays: (RawStay | null)[], hotel?: RawStay): RawTripData {
+  return {
+    ...legacy(),
+    nativeLang: undefined,
+    hotel,
+    days: stays.map((stay, i) => ({
+      date: addDays("2026-01-01", i),
+      theme: `Day ${i + 1}`,
+      weather: "",
+      flights: [],
+      items: [],
+      stay,
+    })),
+  } as RawTripData;
+}
+
+describe("normalizeTrip — lifting per-day stays to the trip", () => {
+  const granvia: RawStay = { name: "Granvia", desc: "Above the station" };
+  const avenida: RawStay = { name: "Avenida" };
+
+  it("collapses a booking repeated across consecutive days into one dated stay", () => {
+    const out = normalizeTrip(withDayStays([granvia, granvia, granvia]));
+    expect(out.stays).toHaveLength(1);
+    expect(out.stays[0]).toMatchObject({
+      name: "Granvia",
+      checkIn: "2026-01-01",
+      // Three nights slept, so check-out is the morning after the last.
+      checkOut: "2026-01-04",
+    });
+  });
+
+  it("keeps the same hotel as two stays when the run is broken", () => {
+    const out = normalizeTrip(withDayStays([granvia, avenida, granvia]));
+    expect(out.stays.map((s) => [s.name, s.checkIn, s.checkOut])).toEqual([
+      ["Granvia", "2026-01-01", "2026-01-02"],
+      ["Avenida", "2026-01-02", "2026-01-03"],
+      ["Granvia", "2026-01-03", "2026-01-04"],
+    ]);
+  });
+
+  it("breaks a run on a day with no accommodation", () => {
+    const out = normalizeTrip(withDayStays([granvia, null, granvia]));
+    expect(out.stays).toHaveLength(2);
+    expect(out.stays[0].checkOut).toBe("2026-01-02");
+    expect(out.stays[1].checkIn).toBe("2026-01-03");
+  });
+
+  it("splits same-name days that differ in any other field", () => {
+    const out = normalizeTrip(
+      withDayStays([granvia, { ...granvia, note: "Room changed" }]),
+    );
+    expect(out.stays).toHaveLength(2);
+    // Back-to-back, so each day still resolves to exactly one stay.
+    expect(out.stays[0].checkOut).toBe(out.stays[1].checkIn);
+  });
+
+  it("ignores a blank-named stay, which rendered as nothing anyway", () => {
+    expect(normalizeTrip(withDayStays([{ name: "  " }])).stays).toEqual([]);
+  });
+
+  it("spans the trip with the legacy hotel when no day carries a stay", () => {
+    const out = normalizeTrip(withDayStays([null, null], granvia));
+    expect(out.stays).toEqual([
+      {
+        name: "Granvia",
+        desc: "Above the station",
+        checkIn: "2026-01-01",
+        checkOut: "2026-01-03",
+      },
+    ]);
+  });
+
+  it("prefers the per-day stays over the legacy hotel", () => {
+    const out = normalizeTrip(withDayStays([avenida, avenida], granvia));
+    expect(out.stays.map((s) => s.name)).toEqual(["Avenida"]);
+  });
+
+  it("never re-derives when the trip already stores stays", () => {
+    // An admin who deletes every stay writes `[]`; re-deriving would resurrect
+    // them from the legacy days on the next read.
+    const raw = { ...withDayStays([granvia, granvia]), stays: [] };
+    expect(normalizeTrip(raw as RawTripData).stays).toEqual([]);
+  });
+
+  it("drops a stored stay that never got dates", () => {
+    const raw = { ...withDayStays([]), stays: [granvia] };
+    expect(normalizeTrip(raw as RawTripData).stays).toEqual([]);
+  });
+});
+
+describe("normalizeTrip — the real china trip", () => {
+  // The seed was hand-authored with per-base comments ("3 nights ... Nov 9–12").
+  // Migrating it should reproduce exactly those bookings.
+  const out = normalizeTrip({ ...chinaTrip, ownerId: "u1" } as RawTripData);
+
+  it("lifts each base into one dated stay", () => {
+    expect(out.stays.map((s) => [s.checkIn, s.checkOut])).toEqual([
+      ["2026-11-09", "2026-11-12"],
+      ["2026-11-12", "2026-11-14"],
+      ["2026-11-14", "2026-11-15"],
+      ["2026-11-15", "2026-11-16"],
+    ]);
+  });
+
+  it("leaves the departure day with no accommodation", () => {
+    // The old `day.stay ?? trip.hotel` fallback showed the Guangzhou hotel here,
+    // four days after checking out of it.
+    const last = out.days[out.days.length - 1];
+    expect(last.date).toBe("2026-11-16");
+    expect(stayForDate(out.stays, last.date)).toBe(null);
+  });
+
+  it("covers every other day of the trip", () => {
+    const uncovered = out.days
+      .map((d) => d.date)
+      .filter((date) => date !== "2026-11-16")
+      .filter((date) => stayForDate(out.stays, date) === null);
+    expect(uncovered).toEqual([]);
   });
 });

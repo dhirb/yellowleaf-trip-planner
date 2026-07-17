@@ -4,11 +4,7 @@ export type ItemKind = "attraction" | "meal" | "stay" | "transport" | "other";
 /** Legacy flight direction — kept only to migrate old single-time flights. */
 export type FlightKind = "arrival" | "departure";
 export type ContactKind =
-  | "emergency"
-  | "family"
-  | "hotel"
-  | "embassy"
-  | "other";
+  "emergency" | "family" | "hotel" | "embassy" | "other";
 
 export interface Currency {
   code: string;
@@ -51,12 +47,22 @@ export interface Phrase {
   pron: string;
 }
 
+/**
+ * One booking, held at the trip level and resolved back to a day at read time
+ * (see `lib/stays.ts`). The nights model: a stay covers `checkIn <= date <
+ * checkOut`, so check in on the 3rd and out on the 6th means the nights of the
+ * 3rd, 4th and 5th — the 6th shows no accommodation.
+ */
 export interface Stay {
   name: string;
   desc?: string;
   address?: string;
   phone?: string;
   note?: string;
+  /** ISO date, "YYYY-MM-DD". The first night. */
+  checkIn: string;
+  /** ISO date, "YYYY-MM-DD". The morning of departure — not a night here. */
+  checkOut: string;
   /** Per-language overrides, keyed by Lang.code. */
   t?: Record<string, StayTranslation>;
 }
@@ -103,7 +109,6 @@ export interface Day {
   theme: string;
   weather: string;
   items: Item[];
-  stay: Stay | null;
   flights: Flight[];
   /** Optional per-day currency override (e.g. multi-country trips). */
   currency?: Currency;
@@ -136,7 +141,8 @@ export interface Trip {
   /** Added non-English languages. English is always the implicit base. */
   languages: Lang[];
   currency: Currency;
-  hotel: Stay;
+  /** Accommodation for the whole trip, each entry carrying its own dates. */
+  stays: Stay[];
   contacts: Contact[];
   phrases: Phrase[];
   days: Day[];

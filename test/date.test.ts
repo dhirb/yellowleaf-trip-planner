@@ -1,5 +1,74 @@
 import { describe, it, expect } from "vitest";
-import { formatDuration, formatTime } from "../src/lib/date";
+import {
+  addDays,
+  daysBetween,
+  formatDuration,
+  formatTime,
+  rangeLabel,
+} from "../src/lib/date";
+
+describe("addDays", () => {
+  it("adds within a month", () => {
+    expect(addDays("2026-11-09", 3)).toBe("2026-11-12");
+  });
+
+  it("rolls over a month boundary", () => {
+    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    expect(addDays("2026-02-28", 1)).toBe("2026-03-01");
+  });
+
+  it("rolls over a year boundary", () => {
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("handles a leap day", () => {
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+  });
+
+  it("subtracts with a negative delta", () => {
+    expect(addDays("2026-01-01", -1)).toBe("2025-12-31");
+  });
+
+  it("is a no-op for zero", () => {
+    expect(addDays("2026-06-15", 0)).toBe("2026-06-15");
+  });
+});
+
+describe("daysBetween", () => {
+  it("counts whole days forward", () => {
+    expect(daysBetween("2026-11-09", "2026-11-12")).toBe(3);
+  });
+
+  it("is zero for the same date", () => {
+    expect(daysBetween("2026-11-09", "2026-11-09")).toBe(0);
+  });
+
+  it("goes negative when b precedes a", () => {
+    expect(daysBetween("2026-11-12", "2026-11-09")).toBe(-3);
+  });
+
+  it("counts across a year boundary", () => {
+    expect(daysBetween("2026-12-30", "2027-01-02")).toBe(3);
+  });
+
+  it("is unaffected by a daylight-saving shift", () => {
+    // Sydney springs forward on 2026-10-04, making this span 47 real hours —
+    // hence the Math.round in daysBetween. Only meaningful because `npm test`
+    // pins TZ=Australia/Sydney; under a zone with no shift here (UTC, and so
+    // most CI) the span is a clean 48h and this asserts nothing.
+    expect(daysBetween("2026-10-03", "2026-10-05")).toBe(2);
+  });
+});
+
+describe("rangeLabel", () => {
+  it("shares the month when both dates fall in it", () => {
+    expect(rangeLabel("2026-11-09", "2026-11-12")).toBe("9–12 Nov");
+  });
+
+  it("names both months across a boundary", () => {
+    expect(rangeLabel("2026-06-30", "2026-07-02")).toBe("30 Jun – 2 Jul");
+  });
+});
 
 describe("formatTime", () => {
   it("returns 24-hour input unchanged in 24h mode", () => {

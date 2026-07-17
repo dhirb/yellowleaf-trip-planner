@@ -8,13 +8,19 @@ const mapsHref = (address: string) =>
 /**
  * Full-page accommodation detail, opened by tapping the stay card. Surfaces the
  * fields the compact card hides — address (opens maps), phone (tap to call),
- * and the booking note. The `stay` is expected to be already localized.
+ * and the booking note. The `stay` is expected to be already localized; the
+ * dates are passed in separately because they are never translated.
  */
 export function StayDetailScreen({
   stay,
+  dateRange,
+  nights,
   onBack,
 }: {
   stay: Stay;
+  /** Human label for the booking, e.g. "9–12 Nov". */
+  dateRange: string;
+  nights: number;
   onBack: () => void;
 }) {
   const address = stay.address?.trim();
@@ -34,6 +40,10 @@ export function StayDetailScreen({
           {stay.desc}
         </div>
       )}
+
+      <div className="mt-2 text-body font-bold text-faint">
+        {dateRange} · {nights} {nights === 1 ? "night" : "nights"}
+      </div>
 
       {(address || phone) && (
         <div className="mt-[18px] flex flex-col gap-2">

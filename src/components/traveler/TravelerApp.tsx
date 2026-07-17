@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Trip } from "../../types";
-import { todayISO } from "../../lib/date";
+import { rangeLabel, todayISO } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
 import { localizeStay } from "../../lib/localize";
+import { stayForDate, stayNights } from "../../lib/stays";
 import { DayScreen } from "./DayScreen";
 import { HelpScreen } from "./HelpScreen";
 import { SettingsScreen } from "./SettingsScreen";
@@ -95,10 +96,17 @@ export function TravelerApp({ trip }: { trip: Trip }) {
     }
   }
   if (open?.kind === "stay") {
-    const rawStay = currentDay.stay ?? trip.hotel;
-    const stay = rawStay ? localizeStay(rawStay, prefLang) : null;
-    if (stay) {
-      return <StayDetailScreen stay={stay} onBack={back} />;
+    const rawStay = stayForDate(trip.stays, currentDay.date);
+    if (rawStay) {
+      return (
+        <StayDetailScreen
+          stay={localizeStay(rawStay, prefLang)}
+          // Dates come off the raw stay — they are never translated.
+          dateRange={rangeLabel(rawStay.checkIn, rawStay.checkOut)}
+          nights={stayNights(rawStay)}
+          onBack={back}
+        />
+      );
     }
   }
 

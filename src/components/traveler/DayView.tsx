@@ -3,6 +3,7 @@ import type { Trip } from "../../types";
 import { bigDate, type TimeFormat } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
 import { localizeStay, localizeDayTheme } from "../../lib/localize";
+import { stayForDate } from "../../lib/stays";
 import { ui } from "../../lib/ui";
 import { cn } from "../../lib/cn";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -62,7 +63,7 @@ export function DayView({
   const day = trip.days[dayIndex] ?? trip.days[0];
   const viewItems = useMemo(() => buildViewItems(day, lang), [day, lang]);
 
-  const rawStay = day.stay ?? trip.hotel;
+  const rawStay = stayForDate(trip.stays, day.date);
   const stay = useMemo(
     () => (rawStay ? localizeStay(rawStay, lang) : null),
     [rawStay, lang],
