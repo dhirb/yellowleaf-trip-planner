@@ -5,6 +5,7 @@ import type { Trip } from "../../src/types";
 import type { RawTripData } from "../../src/lib/migrateTrip";
 import { normalizeTrip } from "../../src/lib/migrateTrip";
 import { AppShell } from "../../src/components/AppShell";
+import { ThemeProvider } from "../../src/components/ThemeProvider";
 import { TravelerApp } from "../../src/components/traveler/TravelerApp";
 import { chinaTrip } from "../../src/data/chinaTrip";
 
@@ -16,10 +17,14 @@ const trip: Trip = {
   id: "demo",
 };
 
+// Mirrors the provider nesting in src/App.tsx: the traveler's Settings screen
+// reads the theme through `useTheme`, which throws without this wrapper.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppShell>
-      <TravelerApp trip={trip} />
-    </AppShell>
+    <ThemeProvider>
+      <AppShell>
+        <TravelerApp trip={trip} />
+      </AppShell>
+    </ThemeProvider>
   </StrictMode>,
 );
