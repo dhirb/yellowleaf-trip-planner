@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { Item, ItemKind, Lang } from "../src/types";
 import {
+  AI_APPCHECK_MESSAGE,
+  AI_QUOTA_MESSAGE,
+  aiFailureReason,
   buildDescriptionPrompt,
+  describeAiError,
   pickItemFields,
   sanitizeTranslations,
   translateField,
@@ -142,5 +146,76 @@ describe("translateField", () => {
     await expect(translateField("title", "Kinkaku-ji", [])).resolves.toEqual(
       {},
     );
+  });
+});
+
+describe("describeAiError", () => {
+  const FALLBACK = "AI could not generate a description.";
+
+  it("explains an App Check rejection instead of echoing the SDK", () => {
+    // Arrange
+    const error = new Error(
+      "AI: Error fetching from https://firebasevertexai.googleapis.com: " +
+        "Firebase App Check token is invalid.",
+    );
+
+    // Act
+    const message = describeAiError(error, FALLBACK);
+
+    // Assert
+    expect(message).toBe(AI_APPCHECK_MESSAGE);
+  });
+
+  it("treats a 403 permission-denied code as an App Check rejection", () => {
+    const error = Object.assign(new Error("Request had insufficient scopes"), {
+      code: "permission-denied",
+    });
+
+    expect(describeAiError(error, FALLBACK)).toBe(AI_APPCHECK_MESSAGE);
+  });
+
+  it("recognises a request blocked by an enforced backend", () => {
+    const error = new Error(
+      "Requests from this Firebase App are blocked. (403)",
+    );
+
+    expect(describeAiError(error, FALLBACK)).toBe(AI_APPCHECK_MESSAGE);
+  });
+
+  it("reports quota exhaustion separately from attestation", () => {
+    const error = Object.assign(new Error("Too many requests"), {
+      code: "resource-exhausted",
+    });
+
+    expect(describeAiError(error, FALLBACK)).toBe(AI_QUOTA_MESSAGE);
+  });
+
+  it("keeps the SDK message for an unrelated failure", () => {
+    const error = new Error("The AI returned an empty description.");
+
+    expect(describeAiError(error, FALLBACK)).toBe(
+      "The AI returned an empty description.",
+    );
+  });
+
+  it("falls back to the caller's wording for a non-Error throw", () => {
+    expect(describeAiError(undefined, FALLBACK)).toBe(FALLBACK);
+    expect(describeAiError(new Error("   "), FALLBACK)).toBe(FALLBACK);
+  });
+});
+
+describe("aiFailureReason", () => {
+  it("names the causes an admin can act on", () => {
+    expect(aiFailureReason(new Error("App Check token is invalid"))).toBe(
+      AI_APPCHECK_MESSAGE,
+    );
+    expect(aiFailureReason(new Error("Quota exceeded (429)"))).toBe(
+      AI_QUOTA_MESSAGE,
+    );
+  });
+
+  it("returns null for anything else, so callers keep their own wording", () => {
+    expect(aiFailureReason(new Error("The model timed out"))).toBeNull();
+    expect(aiFailureReason(undefined)).toBeNull();
   });
 });

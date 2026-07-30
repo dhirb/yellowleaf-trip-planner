@@ -3,6 +3,8 @@ import { BedDouble, ChevronLeft, Settings } from "lucide-react";
 import { useTripEditor } from "../../hooks/useTripEditor";
 import type { ItemTranslation } from "../../types";
 import {
+  aiFailureReason,
+  describeAiError,
   generateActivityDescription,
   generateActivityImage,
   translateField,
@@ -122,17 +124,21 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
               fieldTranslationMap<ItemTranslation>("note", map),
             ),
           );
-        } catch {
+        } catch (e: unknown) {
+          // An App Check or quota rejection makes "retry on the field" useless
+          // advice, so name that cause when we can recognise it.
           showToast(
-            "Description saved, but translating it failed. Use Translate with AI on the field.",
+            aiFailureReason(e) ??
+              "Description saved, but translating it failed. Use Translate with AI on the field.",
           );
         }
       }
     } catch (e: unknown) {
       showToast(
-        e instanceof Error
-          ? e.message
-          : "AI could not generate a description. Check Firebase AI Logic is enabled.",
+        describeAiError(
+          e,
+          "AI could not generate a description. Check Firebase AI Logic is enabled.",
+        ),
       );
     } finally {
       setAiBusyKey("");
@@ -153,9 +159,7 @@ export function Editor({ tripId, onBack, showToast, onDeleted }: EditorProps) {
         showToast("No photo was found for this activity.");
       }
     } catch (e: unknown) {
-      showToast(
-        e instanceof Error ? e.message : "Could not search for a photo.",
-      );
+      showToast(describeAiError(e, "Could not search for a photo."));
     } finally {
       setAiBusyKey("");
     }

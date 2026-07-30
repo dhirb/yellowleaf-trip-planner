@@ -60,9 +60,9 @@ Vite 8 · React 19 · TypeScript 6 · Tailwind v4 (via `@tailwindcss/vite`, no c
 
 **i18n — `src/lib/localize.ts`.** English is the implicit base. Every translatable entity (`Item`, `Stay`, `Day`) carries an optional `t` map of per-language overrides; `localize*` merges defined, non-empty overrides over the base at read time. A blank/missing override never clobbers the English source.
 
-**AI assist — `src/lib/ai.ts`.** Firebase AI Logic (Gemini text + Imagen images), **dynamically imported** so its weight stays out of the initial bundle. Image generation falls back to a deterministic placeholder when Imagen isn't available, so "Ask AI" never hard-fails. Not emulated — it calls the live API even under the emulators.
+**AI assist — `src/lib/ai.ts`.** Firebase AI Logic (Gemini text, grounded with Google Search), **dynamically imported** so its weight stays out of the initial bundle. Thumbnails come from a Wikimedia search (`src/lib/imageSearch.ts`), which returns null rather than throwing, so a miss leaves the thumbnail blank instead of inventing an image. `describeAiError` / `aiFailureReason` are the single place raw SDK failures become admin-facing copy (App Check and quota get named explicitly) — route new AI error paths through them. Not emulated — it calls the live API even under the emulators.
 
-**Firebase init — `src/firebase.ts`.** App Check (reCAPTCHA v3) attests requests; skipped under Node/Vitest and gated on a site key so the app loads without it. Firestore uses `persistentLocalCache` (IndexedDB) for offline reads, falling back to in-memory where IndexedDB is absent (tests). `VITE_FIREBASE_*` config is public-by-design (data is protected by rules, not by hiding config).
+**Firebase init — `src/firebase.ts`.** App Check (reCAPTCHA v3) attests requests; skipped under Node/Vitest, and gated on a site key so `npm run dev` still runs without one — but **`npm run build` fails without the key** (guard in `vite.config.ts`), because Firebase enforces App Check on every AI Logic request from 2026-11-02 and that cannot be undone. Dev/e2e use a registered debug token (`VITE_FIREBASE_APPCHECK_DEBUG_TOKEN` / `FIREBASE_APPCHECK_DEBUG_TOKEN`); that branch is stripped from production builds. Enforcement is deliberately **AI Logic only** — Firestore and Auth stay unenforced. Firestore uses `persistentLocalCache` (IndexedDB) for offline reads, falling back to in-memory where IndexedDB is absent (tests). `VITE_FIREBASE_*` config is public-by-design (data is protected by rules, not by hiding config).
 
 ## Conventions
 
@@ -71,4 +71,5 @@ Vite 8 · React 19 · TypeScript 6 · Tailwind v4 (via `@tailwindcss/vite`, no c
 - **Legacy data:** old Firestore docs and seed literals flow through `src/lib/migrateTrip.ts` (`normalizeTrip`) on every read — extend it (not call sites) when the schema evolves, and add a case to `test/migrateTrip.test.ts`.
 - **PWA service worker** is registered programmatically from `src/main.tsx` (`virtual:pwa-register`) to stay CSP-safe — never add inline `<script>`. Hosting CSP + security headers live in `firebase.json`; verify with `curl -I` after deploy.
 </content>
+
 </invoke>

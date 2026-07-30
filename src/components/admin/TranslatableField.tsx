@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Languages } from "lucide-react";
 import type { Lang } from "../../types";
+import { describeAiError } from "../../lib/ai";
 import { cn } from "../../lib/cn";
 import { Field, fieldInput, fieldTextarea } from "./editFields";
 import { TranslationSheet } from "./TranslationSheet";
@@ -62,6 +63,7 @@ export function TranslatableField<V>({
 }: TranslatableFieldProps<V>) {
   const [open, setOpen] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [error, setError] = useState("");
 
   // No languages configured → behave like an ordinary single-language input.
   if (langs.length === 0) {
@@ -90,13 +92,25 @@ export function TranslatableField<V>({
 
   const translated = countTranslated(langs, translations, field);
 
+  // Every "Translate with AI" button in the admin (item fields, stay fields, the
+  // day theme) funnels through here, so this is the one place a failed translate
+  // needs reporting. The edit screens have no toast of their own, so the message
+  // lands in the sheet beside the button that failed.
   const runTranslate = async () => {
     setTranslating(true);
+    setError("");
     try {
       await onTranslate();
+    } catch (e: unknown) {
+      setError(describeAiError(e, "Translating failed. Please try again."));
     } finally {
       setTranslating(false);
     }
+  };
+
+  const closeSheet = () => {
+    setOpen(false);
+    setError("");
   };
 
   return (
@@ -136,8 +150,9 @@ export function TranslatableField<V>({
           onChangeTranslation={onChangeTranslation}
           onTranslate={runTranslate}
           translating={translating}
+          error={error}
           multiline={multiline}
-          onClose={() => setOpen(false)}
+          onClose={closeSheet}
         />
       )}
     </Field>

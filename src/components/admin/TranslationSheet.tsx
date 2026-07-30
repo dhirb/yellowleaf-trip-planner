@@ -21,6 +21,8 @@ interface TranslationSheetProps<V> {
   /** Fill every language for this field via AI. */
   onTranslate: () => void;
   translating: boolean;
+  /** Why the last AI fill failed, if it did. Blank when there is nothing to report. */
+  error?: string;
   /** Render multi-line inputs (English + each language) for long fields. */
   multiline?: boolean;
   onClose: () => void;
@@ -52,6 +54,7 @@ export function TranslationSheet<V>({
   onChangeTranslation,
   onTranslate,
   translating,
+  error,
   multiline,
   onClose,
 }: TranslationSheetProps<V>) {
@@ -106,7 +109,8 @@ export function TranslationSheet<V>({
           onClick={onTranslate}
           disabled={translating || value.trim() === ""}
           className={cn(
-            "mb-[20px] flex h-10 items-center gap-[6px] rounded-sm bg-ink px-[14px] text-[13px] font-extrabold text-app-bg touch-manipulation",
+            "flex h-10 items-center gap-[6px] rounded-sm bg-ink px-[14px] text-[13px] font-extrabold text-app-bg touch-manipulation",
+            error ? "mb-[10px]" : "mb-[20px]",
             translating || value.trim() === ""
               ? "cursor-default opacity-50"
               : "cursor-pointer opacity-100",
@@ -115,6 +119,15 @@ export function TranslationSheet<V>({
           <Sparkles size={15} />
           {translating ? "Translating…" : "Translate with AI"}
         </button>
+
+        {error && (
+          <p
+            role="alert"
+            className="mb-[20px] rounded-[11px] bg-danger-soft px-[13px] py-[10px] text-[13px] font-semibold leading-[1.45] text-danger"
+          >
+            {error}
+          </p>
+        )}
 
         {/* Per-language overrides */}
         {langs.map((lang) => (

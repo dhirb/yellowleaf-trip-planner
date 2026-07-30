@@ -18,6 +18,91 @@ import type { Item, ItemKind, ItemTranslation, Lang } from "../types";
 
 const TEXT_MODEL = "gemini-2.5-flash";
 
+// ---------------------------------------------------------------------------
+// Error reporting
+// ---------------------------------------------------------------------------
+
+/**
+ * Firebase enforces App Check on every AI Logic request from 2026-11-02, and the
+ * rejection arrives as an opaque 403 from deep inside the SDK. Naming the two
+ * failures an admin can actually act on — an unattested browser and an exhausted
+ * quota — turns those into instructions instead of a stack-trace fragment.
+ */
+export const AI_APPCHECK_MESSAGE =
+  "This browser is not verified for AI yet. In development, register the App Check " +
+  "debug token logged in the browser console; in production, check App Check is " +
+  "enabled for AI Logic in the Firebase console.";
+
+export const AI_QUOTA_MESSAGE =
+  "The AI is over its quota right now. Please try again in a few minutes.";
+
+/** Substrings Firebase uses when App Check refuses to attest a request. */
+const APPCHECK_HINTS = [
+  "app check",
+  "appcheck",
+  "app-check",
+  "attestation",
+  "unregistered",
+  "blocked",
+  "403",
+  "permission-denied",
+  "permission_denied",
+];
+
+const QUOTA_HINTS = [
+  "429",
+  "quota",
+  "rate limit",
+  "resource-exhausted",
+  "resource_exhausted",
+];
+
+/** Searchable lower-cased text for an unknown throw: its `code` plus its message. */
+function errorText(error: unknown): string {
+  if (error instanceof Error) {
+    const { code } = error as Error & { code?: unknown };
+    const prefix = typeof code === "string" ? `${code} ` : "";
+    return `${prefix}${error.message}`.toLowerCase();
+  }
+  return typeof error === "string" ? error.toLowerCase() : "";
+}
+
+/**
+ * The actionable reason behind an AI failure, or null when it is not one we can
+ * give specific advice about.
+ *
+ * Callers that already have their own contextual wording use this and keep their
+ * message on null; callers wanting a message for every case use
+ * {@link describeAiError}. Pure, so it is unit-testable.
+ */
+export function aiFailureReason(error: unknown): string | null {
+  const text = errorText(error);
+  if (APPCHECK_HINTS.some((hint) => text.includes(hint))) {
+    return AI_APPCHECK_MESSAGE;
+  }
+  if (QUOTA_HINTS.some((hint) => text.includes(hint))) {
+    return AI_QUOTA_MESSAGE;
+  }
+  return null;
+}
+
+/**
+ * Turn anything thrown by an AI call into copy worth showing the admin.
+ *
+ * App Check and quota rejections get specific, actionable wording; every other
+ * failure keeps the SDK's own message when it has one, and otherwise falls back
+ * to the caller's per-action wording (which differs between "write a
+ * description" and "find a photo").
+ */
+export function describeAiError(error: unknown, fallback: string): string {
+  const reason = aiFailureReason(error);
+  if (reason) return reason;
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message;
+  }
+  return fallback;
+}
+
 /** Lazily create (and memoise) the Firebase AI instance. */
 let aiPromise: Promise<import("firebase/ai").AI> | null = null;
 async function getAiInstance() {

@@ -43,11 +43,17 @@ export const app = initializeApp(firebaseConfig);
  * v3 site key is itself a public value, like the rest of the Firebase config.
  *
  * It runs only in a real browser: reCAPTCHA needs `document` and a network, so
- * we skip it under Vitest/Node (the rules tests) to avoid init failures. It is
- * also optional — without a site key the app still loads, so enforcement can be
- * rolled out gradually. In dev we register a debug token instead of solving
- * reCAPTCHA; copy the token it logs into Firebase console → App Check → Manage
- * debug tokens so localhost passes once enforcement is on.
+ * we skip it under Vitest/Node (the rules tests) to avoid init failures. A
+ * missing site key no longer ships: `vite.config.ts` fails a production build
+ * without one, because Firebase enforces App Check on every AI Logic request
+ * from 2026-11-02 and an unattested bundle would have AI permanently broken.
+ * Locally the key stays optional so the app still runs without App Check.
+ *
+ * In dev we use a debug token rather than solving reCAPTCHA. Set
+ * `VITE_FIREBASE_APPCHECK_DEBUG_TOKEN` to the token registered under Firebase
+ * console → App Check → Manage debug tokens so the same token survives every
+ * reload; without it Firebase mints a throwaway one you must register by hand
+ * each session.
  */
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
 
@@ -56,12 +62,14 @@ if (typeof document !== "undefined" && appCheckSiteKey) {
     const debug = globalThis as typeof globalThis & {
       FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
     };
-    // Opt into an auto-generated debug token, but never clobber one already
-    // injected by the e2e harness: Playwright sets a *registered* token via
-    // addInitScript (see test/e2e/fixtures.ts) so enforced backends accept its
-    // requests, whereas `true` mints a throwaway token you'd have to register
-    // by hand each run.
-    debug.FIREBASE_APPCHECK_DEBUG_TOKEN ??= true;
+    // Prefer our registered token, falling back to `true` (Firebase mints a
+    // throwaway one and logs it) when none is configured. `??=` never clobbers a
+    // token already injected by the e2e harness: Playwright sets a *registered*
+    // token via addInitScript (see test/e2e/fixtures.ts) so enforced backends
+    // accept its requests. This whole branch is dead code in a production build,
+    // so the token can never reach a shipped bundle.
+    debug.FIREBASE_APPCHECK_DEBUG_TOKEN ??=
+      import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || true;
   }
 
   initializeAppCheck(app, {

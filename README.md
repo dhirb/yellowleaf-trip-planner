@@ -53,11 +53,11 @@ In the Firebase console for your project:
 1. **Authentication → Sign-in method →** enable **Email/Password**.
 2. **Firestore Database →** create a database (production mode is fine; the rules in
    `firestore.rules` are deployed below).
-3. **Build → AI Logic →** click **Get started** and enable the **Gemini Developer API**
-   (free Spark tier is enough for text). _Imagen image generation additionally requires the
-   Blaze plan — the app falls back to a placeholder image on the free tier, so this is
-   optional._
+3. **Build → AI Logic →** click **Get started** and enable the **Gemini Developer API** (the
+   free Spark tier is enough — thumbnails come from Wikimedia, not a paid image model).
 4. **Project settings → General → Your apps →** add a **Web app** and copy the config.
+5. **Build → App Check →** register the web app with the **reCAPTCHA v3** provider and copy
+   the **site** key. This is required, not optional — see [App Check](#app-check) below.
 
 Then create your local env file:
 
@@ -132,10 +132,13 @@ Security rules (`firestore.rules`):
 In the admin editor, each activity has an **Ask AI** button backed by **Firebase AI Logic**
 (`src/lib/ai.ts`, dynamically imported so it stays out of the initial bundle):
 
-- A warm, short description is generated with **Gemini** (`gemini-2.5-flash`) — works on the
-  free Spark plan once AI Logic is enabled.
-- An image is generated with **Imagen** when available (Blaze plan); otherwise it falls back
-  to a deterministic placeholder so the button never fails.
+- A description is generated with **Gemini** (`gemini-2.5-flash`), grounded with Google Search
+  so the details are researched rather than invented — works on the free Spark plan once AI
+  Logic is enabled. The same model powers **Translate with AI** on each field.
+- A thumbnail comes from a **Wikimedia** image search (`src/lib/imageSearch.ts`), so it is a
+  real photo of the place. A miss leaves the thumbnail blank rather than inventing an image.
+
+> AI Logic requires **App Check**. See below — without it every AI call is rejected.
 
 ## Optional: seed demo trips
 
@@ -174,6 +177,47 @@ launches full-screen like a native app.
 `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and a `Content-Security-Policy`
 scoped to Firebase, Google Fonts, and the image hosts. Verify after deploy with `curl -I`.
 
+The CSP already allows what App Check needs: `www.google.com/recaptcha` and
+`www.gstatic.com/recaptcha` (script + frame) and `*.googleapis.com` (the token exchange and
+AI Logic). Adding a different attestation provider means widening it.
+
+## App Check
+
+**App Check attests that a request comes from our real app**, using reCAPTCHA v3 in the
+browser. Firebase **enforces it on every AI Logic (Gemini) request from 2026-11-02**, and that
+enforcement cannot be turned off again — an unattested build has "Ask AI" and "Translate with
+AI" permanently rejected.
+
+So the site key is **not optional in a build**:
+
+- `npm run build` **fails** without `VITE_FIREBASE_APPCHECK_SITE_KEY` (the guard lives in
+  `vite.config.ts`). Use `ALLOW_UNATTESTED_BUILD=1 npm run build` for a deliberate exception.
+- `npm run dev` still runs without a key — App Check is simply skipped (`src/firebase.ts`).
+- CI reads it from the repo variable `VITE_FIREBASE_APPCHECK_SITE_KEY`
+  (`.github/workflows/deploy.yml`).
+
+**Working locally.** reCAPTCHA cannot be solved on `localhost`, so dev uses a debug token
+instead. Register one under **App Check → Manage debug tokens**, then put the same value in
+both `VITE_FIREBASE_APPCHECK_DEBUG_TOKEN` (read by the browser in dev) and
+`FIREBASE_APPCHECK_DEBUG_TOKEN` (read by Playwright, `test/e2e/fixtures.ts`). Skip this and
+Firebase mints a throwaway token per reload that you would have to register by hand each
+session. Debug tokens are dev-only — the branch that reads them is stripped from production
+builds.
+
+**Enforcement scope.** Only **AI Logic** is enforced. Cloud Firestore and Authentication are
+deliberately left unenforced: the traveler view is a shareable PWA on arbitrary devices, and
+enforcing those would need a monitoring period first (**App Check → APIs** shows the verified
+vs. unverified request split). Check the current state without opening the console:
+
+```bash
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  "https://firebaseappcheck.googleapis.com/v1/projects/$YOUR_PROJECT_ID/services"
+```
+
+**When an AI call is rejected**, the admin UI says so in plain words rather than echoing the
+SDK: `describeAiError` in `src/lib/ai.ts` maps attestation and quota failures to actionable
+copy, shown as a toast for "Ask AI" and inside the translation sheet for "Translate with AI".
+
 ## Testing
 
 The Firestore security rules are covered by unit tests (`test/firestore.rules.test.ts`) that
@@ -193,16 +237,16 @@ npm run test:watch        # same, in watch mode
 
 ## Scripts
 
-| Command              | Description                                       |
-| -------------------- | ------------------------------------------------- |
-| `npm run dev`        | Vite dev server                                   |
-| `npm run build`      | Type-check + production build to `dist/`          |
-| `npm run preview`    | Preview the production build                      |
-| `npm run lint`       | Oxlint                                            |
-| `npm test`           | Firestore rules tests on the emulator (Vitest)    |
-| `npm run test:watch` | Rules tests in watch mode                         |
-| `npm run emulators`  | Firebase Auth/Firestore/Hosting emulators         |
-| `npm run seed`       | Optional: load the demo trips into Firestore      |
+| Command                  | Description                                     |
+| ------------------------ | ----------------------------------------------- |
+| `npm run dev`            | Vite dev server                                 |
+| `npm run build`          | Type-check + production build to `dist/`        |
+| `npm run preview`        | Preview the production build                    |
+| `npm run lint`           | Oxlint                                          |
+| `npm test`               | Firestore rules tests on the emulator (Vitest)  |
+| `npm run test:watch`     | Rules tests in watch mode                       |
+| `npm run emulators`      | Firebase Auth/Firestore/Hosting emulators       |
+| `npm run seed`           | Optional: load the demo trips into Firestore    |
 | `npm run build:airports` | Regenerate `public/airports.json` (see Credits) |
 
 ## Airport data & credits
