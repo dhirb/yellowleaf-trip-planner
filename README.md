@@ -33,8 +33,8 @@ src/
     PhoneFrame, StatusBar, Toast, AuthProvider, ui/
     traveler/            TravelerRoute, TravelerApp, Lock/Day/Calendar/Details screens, DetailSheet, TabBar, DayStrip, DayItems
     admin/               AdminApp, LoginScreen, TripsList, Editor, DaysTab, SettingsTab
-  data/seedTrips.ts      Demo trips (used only by the optional seed script)
-scripts/seed.ts          Optional one-off Firestore seeder (npm run seed)
+  data/                  Hand-written trips (seedTrips, chinaTrip, europeTrip2027) for npm run import:trip
+scripts/importTrip.ts    Optional one-off Firestore importer (Admin SDK)
 public/icons/            PWA icons (192/512 + maskable + apple-touch)
 firebase.json            Hosting (security headers + SPA rewrite) + Firestore config
 firestore.rules          Functional, secure default rules
@@ -140,16 +140,22 @@ In the admin editor, each activity has an **Ask AI** button backed by **Firebase
 
 > AI Logic requires **App Check**. See below — without it every AI call is rejected.
 
-## Optional: seed demo trips
+## Optional: import a hand-written trip
 
-The three demo trips (Kyoto / Lisbon / Hội An) are **not** loaded automatically. To add them:
+Trips under `src/data/` (the demo seeds, `chinaTrip`, `europeTrip2027`) are **not** loaded automatically. To import one as a new trip owned by an admin account:
 
 ```bash
-# After creating an admin account in the app, set credentials and run:
-SEED_EMAIL=you@example.com SEED_PASSWORD=your-password npm run seed
+# Preview what would be written (resolves the owner, prints a summary):
+npm run import:trip -- src/data/europeTrip2027/index.ts --dry-run
+
+# Write it. --owner is optional when the project has exactly one admin.
+npm run import:trip -- src/data/europeTrip2027/index.ts --owner you@example.com
+
+# Re-run after editing the data file: overwrite an existing trip in place.
+npm run import:trip -- src/data/europeTrip2027/index.ts --update <docId>
 ```
 
-They are created owned by that account, so the Firestore rules permit them.
+This uses the Admin SDK (`GOOGLE_APPLICATION_CREDENTIALS`, as for `npm run provision`), so it bypasses the rules; the data is normalised to the current model before it is written.
 
 ## Installable (PWA)
 
@@ -246,7 +252,7 @@ npm run test:watch        # same, in watch mode
 | `npm test`               | Firestore rules tests on the emulator (Vitest)  |
 | `npm run test:watch`     | Rules tests in watch mode                       |
 | `npm run emulators`      | Firebase Auth/Firestore/Hosting emulators       |
-| `npm run seed`           | Optional: load the demo trips into Firestore    |
+| `npm run import:trip`    | Optional: import a `src/data/` trip (Admin SDK) |
 | `npm run build:airports` | Regenerate `public/airports.json` (see Credits) |
 
 ## Airport data & credits

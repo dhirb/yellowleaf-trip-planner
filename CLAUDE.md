@@ -40,6 +40,12 @@ Provision an admin account (custom-claim `role: admin`, needs `GOOGLE_APPLICATIO
 npm run provision -- user@example.com [admin]
 ```
 
+Import a hand-written trip from `src/data/` as a new Firestore doc (Admin SDK, same credential; `--dry-run` previews, `--owner` picks the admin when there is more than one, `--update <docId>` overwrites an existing trip in place):
+
+```bash
+npm run import:trip -- src/data/europeTrip2027/index.ts --dry-run
+```
+
 ## Tech stack
 
 Vite 8 · React 19 · TypeScript 6 · Tailwind v4 (via `@tailwindcss/vite`, no config file — tokens live in `src/styles/tokens.css`) · react-router-dom 7 · Firebase (Auth, Firestore, Hosting, App Check, AI Logic/Gemini) · `vite-plugin-pwa` (Workbox). Linting is **oxlint**, not ESLint.
