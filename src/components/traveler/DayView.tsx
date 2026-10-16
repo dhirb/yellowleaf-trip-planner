@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type RefObject } from "react";
 import type { Trip } from "../../types";
 import { bigDate, type TimeFormat } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
@@ -24,6 +24,10 @@ interface DayViewProps {
   onOpenItem: (index: number) => void;
   onOpenFlight: (index: number) => void;
   onOpenStay: () => void;
+  /** Day-strip offset shared across the pager's panels (see DayStrip). */
+  stripScroll?: RefObject<number>;
+  /** Whether this panel is the one on screen. */
+  stripActive?: boolean;
 }
 
 const NavBtn = ({
@@ -59,6 +63,8 @@ export function DayView({
   onOpenItem,
   onOpenFlight,
   onOpenStay,
+  stripScroll,
+  stripActive,
 }: DayViewProps) {
   const day = trip.days[dayIndex] ?? trip.days[0];
   const viewItems = useMemo(() => buildViewItems(day, lang), [day, lang]);
@@ -111,6 +117,8 @@ export function DayView({
             current={dayIndex}
             today={today}
             onSelect={onSelectDay}
+            scrollMemory={stripScroll}
+            active={stripActive}
           />
         </div>
 

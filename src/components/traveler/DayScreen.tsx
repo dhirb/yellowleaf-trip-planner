@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Trip } from "../../types";
 import type { TimeFormat } from "../../lib/date";
 import { SwipePager } from "../ui/SwipePager";
@@ -35,6 +36,10 @@ export function DayScreen({
   onOpenFlight,
   onOpenStay,
 }: DayScreenProps) {
+  // One strip offset for all panels, so picking a day never visibly re-scrolls
+  // the strip (each panel mounts its own DayStrip instance).
+  const stripScroll = useRef(0);
+
   return (
     <SwipePager
       index={dayIndex}
@@ -55,6 +60,8 @@ export function DayScreen({
           onOpenItem={onOpenItem}
           onOpenFlight={onOpenFlight}
           onOpenStay={onOpenStay}
+          stripScroll={stripScroll}
+          stripActive={i === dayIndex}
         />
       )}
     />

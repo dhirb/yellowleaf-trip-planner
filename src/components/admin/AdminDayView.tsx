@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import type { DayTranslation, Trip } from "../../types";
 import { bigDate, rangeLabel, type TimeFormat } from "../../lib/date";
 import { buildViewItems } from "../../lib/dayView";
@@ -35,6 +36,10 @@ interface AdminDayViewProps {
   onOpenStay: (si: number) => void;
   /** Leave for the Stays list, where accommodation is added and dated. */
   onGoToStays: () => void;
+  /** Day-strip offset shared across the pager's panels (see DayStrip). */
+  stripScroll?: RefObject<number>;
+  /** Whether this panel is the one on screen. */
+  stripActive?: boolean;
 }
 
 // Admin cards mirror the traveler view; native time inputs in the edit screens
@@ -99,6 +104,8 @@ export function AdminDayView({
   onOpenFlight,
   onOpenStay,
   onGoToStays,
+  stripScroll,
+  stripActive,
 }: AdminDayViewProps) {
   const di = Math.max(0, Math.min(dayIndex, trip.days.length - 1));
   const day = trip.days[di];
@@ -177,6 +184,8 @@ export function AdminDayView({
             onSelect={onSelectDay}
             size={48}
             markToday={false}
+            scrollMemory={stripScroll}
+            active={stripActive}
           />
         </div>
       </div>

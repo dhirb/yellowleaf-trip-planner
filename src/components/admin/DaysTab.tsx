@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Trip } from "../../types";
 import { SwipePager } from "../ui/SwipePager";
 import { AdminDayView } from "./AdminDayView";
@@ -24,6 +25,8 @@ interface DaysTabProps {
 export function DaysTab(props: DaysTabProps) {
   const { trip, dayIndex, onPrevDay, onNextDay } = props;
   const di = Math.max(0, Math.min(dayIndex, trip.days.length - 1));
+  // Shared day-strip offset, see DayScreen.
+  const stripScroll = useRef(0);
 
   return (
     <SwipePager
@@ -31,7 +34,14 @@ export function DaysTab(props: DaysTabProps) {
       count={trip.days.length}
       onPrev={onPrevDay}
       onNext={onNextDay}
-      renderPanel={(i) => <AdminDayView {...props} dayIndex={i} />}
+      renderPanel={(i) => (
+        <AdminDayView
+          {...props}
+          dayIndex={i}
+          stripScroll={stripScroll}
+          stripActive={i === di}
+        />
+      )}
     />
   );
 }
