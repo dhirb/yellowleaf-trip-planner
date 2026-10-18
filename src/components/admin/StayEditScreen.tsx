@@ -1,7 +1,11 @@
+import { MapPin } from "lucide-react";
 import type { StayTranslation, Trip } from "../../types";
 import {
+  clearStayLocation,
   delStay,
+  setStayCity,
   setStayDates,
+  setStayPlace,
   setStayTranslations,
   updateStay,
 } from "../../lib/editTrip";
@@ -11,6 +15,7 @@ import { cn } from "../../lib/cn";
 import { EditScreenShell } from "./EditScreenShell";
 import { ActionBar } from "../ui/ActionBar";
 import { TranslatableField } from "./TranslatableField";
+import { PlaceField } from "./PlaceField";
 import { EditableField, Field, fieldInput } from "./editFields";
 
 interface StayEditScreenProps {
@@ -97,6 +102,38 @@ export function StayEditScreen({
       <div className="-mt-[8px] mb-[18px] text-[13px] font-semibold text-faint">
         {nights} {nights === 1 ? "night" : "nights"} — the check-out date itself
         shows no accommodation.
+      </div>
+
+      <Field label="City (shown on the map)">
+        <PlaceField
+          value={stay.city ?? ""}
+          onChangeText={(v) => update((t) => setStayCity(t, si, v))}
+          onPick={(p) =>
+            update((t) =>
+              setStayPlace(t, si, p.name, { lat: p.lat, lng: p.lng }),
+            )
+          }
+          scope="settlement"
+          ariaLabel="City"
+          placeholder="City or town…"
+        />
+      </Field>
+      <div className="-mt-[8px] mb-[18px] flex items-center gap-[6px] text-[13px] font-semibold text-faint">
+        {stay.location ? (
+          <>
+            <MapPin size={14} strokeWidth={2.4} className="text-accent" />
+            <span>Pinned on the traveler's map.</span>
+            <button
+              type="button"
+              onClick={() => update((t) => clearStayLocation(t, si))}
+              className="cursor-pointer font-extrabold text-accent"
+            >
+              Unpin
+            </button>
+          </>
+        ) : (
+          "Press Find and pick a result to pin this stay on the traveler's map."
+        )}
       </div>
 
       <TranslatableField

@@ -2,13 +2,16 @@ import type {
   Day,
   Flight,
   FlightKind,
+  GeoPoint,
   Item,
+  ItemKind,
   Lang,
   Stay,
   TripData,
 } from "../types";
 import { LANGUAGE_PRESETS } from "./languages";
 import { addDays, daysBetween } from "./date";
+import { isGeoPoint } from "./geo";
 
 /** Current endonym label for each preset code, used to refresh stale stored labels. */
 const PRESET_LABEL_BY_CODE = new Map(
@@ -26,16 +29,22 @@ function refreshLabel(lang: Lang): Lang {
 }
 
 /** Legacy input shapes: what old Firestore docs and seed literals carry. */
-export type RawItem = Item & { local?: string };
+export type RawItem = Omit<Item, "location"> & {
+  local?: string;
+  /** Untrusted until `isGeoPoint` says otherwise. */
+  location?: unknown;
+};
 /**
  * Legacy stays carried no dates — they hung off a single day, and a multi-night
  * booking was repeated on each of its days. The dates are optional here so old
  * docs and seed literals still typecheck.
  */
-export type RawStay = Omit<Stay, "checkIn" | "checkOut"> & {
+export type RawStay = Omit<Stay, "checkIn" | "checkOut" | "location"> & {
   localName?: string;
   checkIn?: string;
   checkOut?: string;
+  /** Untrusted until `isGeoPoint` says otherwise. */
+  location?: unknown;
 };
 /**
  * Legacy flights carried a single kind-dependent `time` and a `kind`
@@ -59,15 +68,31 @@ export type RawTripData = Omit<
   hotel?: RawStay;
 };
 
-/** Fold a legacy `local` title into the language's title override. */
+const ITEM_KINDS = new Set<ItemKind>([
+  "attraction",
+  "meal",
+  "stay",
+  "transport",
+  "other",
+]);
+
+/**
+ * Fold a legacy `local` title into the language's title override, drop a
+ * `location` that is not a usable coordinate, and coerce an unknown `kind` to
+ * "other" — it drives an icon table and class names on the map.
+ */
 function migrateItem(item: RawItem, code: string | null): Item {
-  const { local, ...rest } = item;
+  const { local, location, ...rest } = item;
+  const kind: ItemKind = ITEM_KINDS.has(rest.kind) ? rest.kind : "other";
+  const out: Item = isGeoPoint(location)
+    ? { ...rest, kind, location }
+    : { ...rest, kind };
   if (local && code) {
-    const t = { ...(rest.t ?? {}) };
+    const t = { ...(out.t ?? {}) };
     t[code] = { title: local, ...(t[code] ?? {}) };
-    return { ...rest, t };
+    return { ...out, t };
   }
-  return { ...rest };
+  return out;
 }
 
 /**
@@ -88,16 +113,24 @@ function migrateFlight(flight: RawFlight): Flight {
 
 /**
  * Fold a legacy `localName` into the language's name override. Dates, where the
- * stay already has them, pass straight through.
+ * stay already has them, pass straight through. A `location` that is not a
+ * usable coordinate (hand-edited doc, older shape) is dropped so the map only
+ * ever sees points it can place.
  */
-function migrateStay(stay: RawStay, code: string | null): RawStay {
-  const { localName, ...rest } = stay;
+type CleanStay = Omit<RawStay, "location"> & { location?: GeoPoint };
+
+function migrateStay(stay: RawStay, code: string | null): CleanStay {
+  const { localName, location, city, ...rest } = stay;
+  let out: CleanStay = isGeoPoint(location) ? { ...rest, location } : rest;
+  // `city` is read with `.trim()` in render paths; a non-string from a
+  // hand-edited doc is dropped rather than allowed to throw there.
+  if (typeof city === "string") out = { ...out, city };
   if (localName && code) {
-    const t = { ...(rest.t ?? {}) };
+    const t = { ...(out.t ?? {}) };
     t[code] = { name: localName, ...(t[code] ?? {}) };
-    return { ...rest, t };
+    return { ...out, t };
   }
-  return { ...rest };
+  return out;
 }
 
 /**
@@ -127,7 +160,7 @@ function stayKey(stay: RawStay): string {
 }
 
 interface StayRun {
-  stay: RawStay;
+  stay: CleanStay;
   key: string;
   checkIn: string;
   lastDate: string;
@@ -185,7 +218,7 @@ function migrateStays(raw: RawTripData, code: string | null): Stay[] {
   if (raw.stays != null) {
     return raw.stays
       .map((s) => migrateStay(s, code))
-      .filter((s): s is RawStay & { checkIn: string; checkOut: string } =>
+      .filter((s): s is CleanStay & { checkIn: string; checkOut: string } =>
         Boolean(s.checkIn && s.checkOut),
       );
   }

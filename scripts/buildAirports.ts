@@ -15,7 +15,11 @@
  * Output is a compact tuple array the app fetches lazily and searches in the
  * browser — no API keys, quotas, or runtime network calls:
  *
- *   [iata, name, city, country]   e.g. ["KUL","Kuala Lumpur International Airport","Kuala Lumpur","MY"]
+ *   [iata, name, city, country, lat, lng]
+ *   e.g. ["KUL","Kuala Lumpur International Airport","Kuala Lumpur","MY",2.7456,101.7099]
+ *
+ * The coordinates (OurAirports, 4 dp ≈ 10 m) place the airport on the
+ * traveler's day map; the admin flight editor only reads the first four.
  *
  * Usage:
  *   npm run build:airports
@@ -39,7 +43,22 @@ const OPENFLIGHTS_URL =
 const KEEP_TYPES = new Set(["large_airport", "medium_airport"]);
 
 /** A compact, JSON-friendly airport record. Order matches the runtime parser. */
-type AirportTuple = [iata: string, name: string, city: string, country: string];
+type AirportTuple = [
+  iata: string,
+  name: string,
+  city: string,
+  country: string,
+  lat: number,
+  lng: number,
+];
+
+/** Decimal places kept for coordinates — about 10 m, plenty for a map pin. */
+const COORD_DECIMALS = 4;
+
+function roundCoord(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Number(n.toFixed(COORD_DECIMALS)) : NaN;
+}
 
 /**
  * Parse RFC-4180 CSV text into rows of string cells. Handles quoted fields,
@@ -136,6 +155,8 @@ async function main() {
   const iName = col("name");
   const iCity = col("municipality");
   const iCountry = col("iso_country");
+  const iLat = col("latitude_deg");
+  const iLng = col("longitude_deg");
 
   // Keep the largest entry per IATA code (some codes appear more than once).
   const byIata = new Map<string, { tuple: AirportTuple; type: string }>();
@@ -143,6 +164,9 @@ async function main() {
     const iata = r[iIata]?.trim().toUpperCase() ?? "";
     const type = r[iType] ?? "";
     if (!/^[A-Z]{3}$/.test(iata) || !KEEP_TYPES.has(type)) continue;
+    const lat = roundCoord(r[iLat]);
+    const lng = roundCoord(r[iLng]);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) continue;
 
     // Prefer the OpenFlights metro city; fall back to the physical municipality.
     const city = metroCity.get(iata) ?? r[iCity]?.trim() ?? "";
@@ -151,6 +175,8 @@ async function main() {
       r[iName]?.trim() ?? "",
       city,
       r[iCountry]?.trim() ?? "",
+      lat,
+      lng,
     ];
     const existing = byIata.get(iata);
     // Prefer a large airport over a medium one sharing the same code.

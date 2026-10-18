@@ -149,6 +149,52 @@ describe("normalizeTrip", () => {
     );
   });
 
+  it("keeps a well-formed item location and strips a malformed one", () => {
+    const raw = legacy();
+    const location = { lat: 35.0116, lng: 135.7681 };
+    raw.days[0].items = [
+      { kind: "attraction", time: "09:00", title: "Good", location },
+      {
+        kind: "attraction",
+        time: "10:00",
+        title: "Bad",
+        location: { lat: "x" },
+      },
+      { kind: "attraction", time: "11:00", title: "None" },
+    ];
+    const items = normalizeTrip(raw).days[0].items;
+    expect(items[0].location).toEqual(location);
+    expect("location" in items[1]).toBe(false);
+    expect("location" in items[2]).toBe(false);
+  });
+
+  it("coerces an unknown item kind to 'other'", () => {
+    const raw = legacy();
+    raw.days[0].items = [
+      { kind: "spa" as never, time: "09:00", title: "Odd" },
+      { kind: "meal", time: "10:00", title: "Fine" },
+    ];
+    const items = normalizeTrip(raw).days[0].items;
+    expect(items[0].kind).toBe("other");
+    expect(items[1].kind).toBe("meal");
+  });
+
+  it("drops a non-string stay city rather than letting render trim it", () => {
+    const raw = {
+      ...legacy(),
+      stays: [
+        {
+          name: "Granvia",
+          checkIn: "2026-01-01",
+          checkOut: "2026-01-02",
+          city: 42 as never,
+        },
+      ],
+    };
+    const stay = normalizeTrip(raw as RawTripData).stays[0];
+    expect("city" in stay).toBe(false);
+  });
+
   it("drops nativeLang from output", () => {
     expect("nativeLang" in normalizeTrip(legacy())).toBe(false);
   });
@@ -277,6 +323,30 @@ describe("normalizeTrip — lifting per-day stays to the trip", () => {
   it("drops a stored stay that never got dates", () => {
     const raw = { ...withDayStays([]), stays: [granvia] };
     expect(normalizeTrip(raw as RawTripData).stays).toEqual([]);
+  });
+
+  it("keeps a well-formed stay location", () => {
+    const dated = { ...granvia, checkIn: "2026-01-01", checkOut: "2026-01-02" };
+    const location = { lat: 35.0116, lng: 135.7681 };
+    const raw = { ...withDayStays([]), stays: [{ ...dated, location }] };
+    expect(normalizeTrip(raw as RawTripData).stays[0].location).toEqual(
+      location,
+    );
+  });
+
+  it("strips a malformed stay location rather than shipping it to the map", () => {
+    const dated = { ...granvia, checkIn: "2026-01-01", checkOut: "2026-01-02" };
+    const bad = [
+      { lat: "35.0", lng: "135.7" },
+      { lat: 95, lng: 0 },
+      { lat: 35 },
+      null,
+    ];
+    for (const location of bad) {
+      const raw = { ...withDayStays([]), stays: [{ ...dated, location }] };
+      const stay = normalizeTrip(raw as RawTripData).stays[0];
+      expect("location" in stay).toBe(false);
+    }
   });
 });
 

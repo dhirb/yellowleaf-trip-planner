@@ -17,7 +17,9 @@ export function HelpScreen({ trip }: HelpScreenProps) {
   return (
     <>
       <div className="shrink-0 px-[18px] pt-[max(env(safe-area-inset-top),14px)] pb-[12px]">
-        <div className="text-display font-extrabold tracking-[-0.5px]">Help</div>
+        <div className="text-display font-extrabold tracking-[-0.5px]">
+          Help
+        </div>
         <div className="mt-[3px] text-body font-medium text-muted">
           Contacts & useful phrases
         </div>

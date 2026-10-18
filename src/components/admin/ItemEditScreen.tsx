@@ -1,19 +1,23 @@
+import { useState } from "react";
 import type { ItemKind, ItemTranslation, Trip } from "../../types";
 import { imgFor } from "../../lib/dayView";
 import { bigDate } from "../../lib/date";
 import { cn } from "../../lib/cn";
 import {
+  clearItemLocation,
   delItem,
   setItemContent,
+  setItemLocation,
   setItemTranslations,
   updateItem,
 } from "../../lib/editTrip";
 import { makeTranslationHandlers } from "../../lib/translateHandlers";
-import { Image as ImageIcon, Sparkles } from "lucide-react";
+import { Image as ImageIcon, MapPin, Sparkles } from "lucide-react";
 import { EditScreenShell } from "./EditScreenShell";
 import { ActionBar } from "../ui/ActionBar";
 import { Select } from "../ui/Select";
 import { EditableField, Field, fieldInput } from "./editFields";
+import { PlaceField } from "./PlaceField";
 import { TranslatableField } from "./TranslatableField";
 
 interface ItemEditScreenProps {
@@ -54,6 +58,12 @@ export function ItemEditScreen({
 }: ItemEditScreenProps) {
   const day = trip.days[di];
   const item = day?.items[ii];
+  // What to look up for the map pin. Local to the editor — the search text is
+  // not trip data — and seeded from the activity so one tap on Find usually
+  // does it.
+  const [placeQuery, setPlaceQuery] = useState(
+    () => item?.place?.trim() || item?.title || "",
+  );
   // Defensive: the item can vanish (e.g. after a remote edit) — bail rather
   // than render against a stale index.
   if (!item) return null;
@@ -185,6 +195,39 @@ export function ItemEditScreen({
         onTranslate={translateInto("place", item.place ?? "")}
         placeholder="Location / area…"
       />
+
+      {/* Map pin */}
+      <Field label="Map pin">
+        <PlaceField
+          value={placeQuery}
+          onChangeText={setPlaceQuery}
+          onPick={(p) =>
+            update((t) =>
+              setItemLocation(t, di, ii, { lat: p.lat, lng: p.lng }),
+            )
+          }
+          scope="any"
+          ariaLabel="Map pin search"
+          placeholder="Museum, park, restaurant…"
+        />
+      </Field>
+      <div className="-mt-[8px] mb-[18px] flex items-center gap-[6px] text-[13px] font-semibold text-faint">
+        {item.location ? (
+          <>
+            <MapPin size={14} strokeWidth={2.4} className="text-accent" />
+            <span>Pinned on the day's map.</span>
+            <button
+              type="button"
+              onClick={() => update((t) => clearItemLocation(t, di, ii))}
+              className="cursor-pointer font-extrabold text-accent"
+            >
+              Unpin
+            </button>
+          </>
+        ) : (
+          "Press Find and pick a result to show this on the day's map."
+        )}
+      </div>
 
       {/* Tag */}
       <TranslatableField

@@ -41,6 +41,12 @@ export interface Contact {
   color?: string;
 }
 
+/** A WGS84 coordinate. Validated on read by `isGeoPoint` (lib/geo.ts). */
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
 export interface Phrase {
   en: string;
   local: string;
@@ -59,6 +65,16 @@ export interface Stay {
   address?: string;
   phone?: string;
   note?: string;
+  /**
+   * The city or town this base is in, as shown on the traveler's map. Never
+   * translated — place names stay recognisable across languages.
+   */
+  city?: string;
+  /**
+   * Where the map pin sits. Set only by picking a geocoder suggestion in the
+   * admin stay editor (see `PlaceField`); a stay without one is left off the map.
+   */
+  location?: GeoPoint;
   /** ISO date, "YYYY-MM-DD". The first night. */
   checkIn: string;
   /** ISO date, "YYYY-MM-DD". The morning of departure — not a night here. */
@@ -99,6 +115,11 @@ export interface Item {
   cost?: string;
   tip?: string;
   image?: string;
+  /**
+   * Where this activity sits on the day's map. Set only by picking a geocoder
+   * result in the admin item editor; without one the activity is left off.
+   */
+  location?: GeoPoint;
   /** Per-language overrides, keyed by Lang.code. */
   t?: Record<string, ItemTranslation>;
 }

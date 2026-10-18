@@ -25,6 +25,11 @@ import {
   delStay,
   setStayDates,
   setStayTranslations,
+  setStayPlace,
+  setStayCity,
+  clearStayLocation,
+  setItemLocation,
+  clearItemLocation,
   setTripStart,
   setTripEnd,
 } from "../src/lib/editTrip";
@@ -593,5 +598,67 @@ describe("co-owner helpers", () => {
     const base = fixture();
     addCoOwner(base, "friend@example.com");
     expect(base.coOwnerEmails).toBeUndefined();
+  });
+});
+
+describe("setStayPlace / clearStayLocation", () => {
+  const point = { lat: 46.5747, lng: 11.6713 };
+  /** The bare fixture has no stays; add one so index 0 exists. */
+  const withStay = () => addStay(fixture());
+
+  it("sets the city and location together", () => {
+    const t = withStay();
+    const next = setStayPlace(t, 0, "Ortisei", point);
+    expect(next.stays[0].city).toBe("Ortisei");
+    expect(next.stays[0].location).toEqual(point);
+    expect(t.stays[0].location).toBeUndefined();
+  });
+
+  it("removes the location key outright so Firestore never sees undefined", () => {
+    const pinned = setStayPlace(withStay(), 0, "Ortisei", point);
+    const next = clearStayLocation(pinned, 0);
+    expect("location" in next.stays[0]).toBe(false);
+    expect(next.stays[0].city).toBe("Ortisei");
+    expect(pinned.stays[0].location).toEqual(point);
+  });
+
+  it("is a no-op for an unknown stay index", () => {
+    const t = withStay();
+    expect(setStayPlace(t, 9, "Nowhere", point)).toBe(t);
+    expect(clearStayLocation(t, 9)).toBe(t);
+  });
+
+  it("retyping the city by hand drops the pin, since it described the old label", () => {
+    const pinned = setStayPlace(withStay(), 0, "Ortisei", point);
+    const next = setStayCity(pinned, 0, "Munich");
+    expect(next.stays[0].city).toBe("Munich");
+    expect("location" in next.stays[0]).toBe(false);
+    expect(pinned.stays[0].location).toEqual(point);
+  });
+});
+
+describe("setItemLocation / clearItemLocation", () => {
+  const point = { lat: 48.1335, lng: 11.6895 };
+
+  it("pins an activity without touching its siblings", () => {
+    const t = fixture();
+    const next = setItemLocation(t, 0, 1, point);
+    expect(next.days[0].items[1].location).toEqual(point);
+    expect(next.days[0].items[0].location).toBeUndefined();
+    expect(t.days[0].items[1].location).toBeUndefined();
+  });
+
+  it("removes the key outright so Firestore never sees undefined", () => {
+    const pinned = setItemLocation(fixture(), 0, 1, point);
+    const next = clearItemLocation(pinned, 0, 1);
+    expect("location" in next.days[0].items[1]).toBe(false);
+    expect(pinned.days[0].items[1].location).toEqual(point);
+  });
+
+  it("is a no-op for an unknown day or item", () => {
+    const t = fixture();
+    expect(setItemLocation(t, 3, 0, point)).toBe(t);
+    expect(setItemLocation(t, 0, 9, point)).toBe(t);
+    expect(clearItemLocation(t, 0, 9)).toBe(t);
   });
 });

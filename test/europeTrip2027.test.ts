@@ -223,3 +223,12 @@ describe("europeTrip2027 Simplified Chinese translations", () => {
     }
   });
 });
+
+describe("europeTrip2027 map pins", () => {
+  it("pins every base so the traveler map shows the whole route", () => {
+    for (const stay of trip().stays) {
+      expect(stay.city?.trim(), stay.name).toBeTruthy();
+      expect(stay.location, stay.name).toBeDefined();
+    }
+  });
+});

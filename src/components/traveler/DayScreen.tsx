@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { Trip } from "../../types";
+import type { AirportIndex } from "../../lib/airports";
 import type { TimeFormat } from "../../lib/date";
 import { SwipePager } from "../ui/SwipePager";
 import { DayView } from "./DayView";
@@ -16,6 +17,9 @@ interface DayScreenProps {
   onOpenItem: (index: number) => void;
   onOpenFlight: (index: number) => void;
   onOpenStay: () => void;
+  onOpenRouteMap: () => void;
+  onOpenDayMap: (dayIndex: number) => void;
+  airports: AirportIndex | null;
 }
 
 /**
@@ -35,6 +39,9 @@ export function DayScreen({
   onOpenItem,
   onOpenFlight,
   onOpenStay,
+  onOpenRouteMap,
+  onOpenDayMap,
+  airports,
 }: DayScreenProps) {
   // One strip offset for all panels, so picking a day never visibly re-scrolls
   // the strip (each panel mounts its own DayStrip instance).
@@ -60,6 +67,9 @@ export function DayScreen({
           onOpenItem={onOpenItem}
           onOpenFlight={onOpenFlight}
           onOpenStay={onOpenStay}
+          onOpenRouteMap={onOpenRouteMap}
+          onOpenDayMap={() => onOpenDayMap(i)}
+          airports={airports}
           stripScroll={stripScroll}
           stripActive={i === dayIndex}
         />

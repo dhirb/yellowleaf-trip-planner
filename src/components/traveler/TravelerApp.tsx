@@ -6,6 +6,8 @@ import { localizeStay } from "../../lib/localize";
 import { stayForDate, stayNights } from "../../lib/stays";
 import { DayScreen } from "./DayScreen";
 import { HelpScreen } from "./HelpScreen";
+import { RouteMapScreen } from "./RouteMapScreen";
+import { DayMapScreen } from "./DayMapScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { DetailScreen } from "./DetailScreen";
 import { FlightDetailScreen } from "./FlightDetailScreen";
@@ -15,12 +17,29 @@ import { useTimeFormat } from "../../hooks/useTimeFormat";
 import { useFontScale } from "../../hooks/useFontScale";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useTripManifest } from "../../hooks/useTripManifest";
+import { useAirports } from "../../hooks/useAirports";
 
 /** Which card, if any, has been tapped open into its full-page detail view. */
 type OpenTarget =
   | { kind: "item"; index: number }
   | { kind: "flight"; index: number }
-  | { kind: "stay" };
+  | { kind: "stay" }
+  | { kind: "routeMap" }
+  | { kind: "dayMap" };
+
+/**
+ * Resolve a tapped day-map pin (see `dayPins` for the id scheme) to the card
+ * it stands for, or null for an id we don't recognise.
+ */
+function pinTarget(id: string): OpenTarget | null {
+  if (id === "stay") return { kind: "stay" };
+  const [kind, raw] = id.split(":");
+  const index = Number(raw);
+  if (!Number.isInteger(index)) return null;
+  if (kind === "item") return { kind: "item", index };
+  if (kind === "flight") return { kind: "flight", index };
+  return null;
+}
 
 /** The full traveler experience for a single trip. */
 export function TravelerApp({ trip }: { trip: Trip }) {
@@ -39,6 +58,10 @@ export function TravelerApp({ trip }: { trip: Trip }) {
   );
   const { timeFormat, setTimeFormat } = useTimeFormat();
   const { fontScale, setFontScale } = useFontScale();
+  // Airports are only fetched for a trip that has flights to pin.
+  const airports = useAirports(
+    trip.days.some((d) => (d.flights ?? []).length > 0),
+  );
 
   // Name the installable PWA after this trip (and open it straight to the
   // trip), restoring the static manifest when the traveller leaves.
@@ -95,6 +118,24 @@ export function TravelerApp({ trip }: { trip: Trip }) {
       );
     }
   }
+  if (open?.kind === "routeMap") {
+    return <RouteMapScreen trip={trip} lang={prefLang} onBack={back} />;
+  }
+  if (open?.kind === "dayMap") {
+    return (
+      <DayMapScreen
+        trip={trip}
+        dayIndex={safeDay}
+        lang={prefLang}
+        airports={airports}
+        onBack={back}
+        onOpenPin={(id) => {
+          const target = pinTarget(id);
+          if (target) setOpen(target);
+        }}
+      />
+    );
+  }
   if (open?.kind === "stay") {
     const rawStay = stayForDate(trip.stays, currentDay.date);
     if (rawStay) {
@@ -125,6 +166,12 @@ export function TravelerApp({ trip }: { trip: Trip }) {
           onOpenItem={(index) => setOpen({ kind: "item", index })}
           onOpenFlight={(index) => setOpen({ kind: "flight", index })}
           onOpenStay={() => setOpen({ kind: "stay" })}
+          onOpenRouteMap={() => setOpen({ kind: "routeMap" })}
+          onOpenDayMap={(i) => {
+            goDay(i);
+            setOpen({ kind: "dayMap" });
+          }}
+          airports={airports}
         />
       )}
       {screen === "help" && <HelpScreen trip={trip} />}

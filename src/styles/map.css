@@ -1,0 +1,106 @@
+/**
+ * Map surfaces. Leaflet's own stylesheet is loaded with the library (see
+ * lib/leaflet.ts); these rules sit on top so a map reads as part of the app:
+ * tokenised colours, the app typeface, and pins that flip with the theme.
+ */
+
+.yl-map {
+  width: 100%;
+  height: 100%;
+  background: var(--color-surface-sunken);
+  font-family: var(--font-sans);
+}
+
+.yl-map .leaflet-control-attribution {
+  padding: 2px 7px;
+  border-top-left-radius: 8px;
+  background: color-mix(in srgb, var(--color-app-bg) 88%, transparent);
+  color: var(--color-muted);
+  font: 600 10px/1.5 var(--font-sans);
+}
+.yl-map .leaflet-control-attribution a {
+  color: var(--color-ink-dim);
+}
+
+/* Pins. The wrapper is Leaflet's positioned icon element; the inner disc is
+   what the traveler sees, and its glyph (a number or an icon) is rendered into
+   it by React. Centre-anchored (no tail), so the glyph sits on the coordinate.
+   The colour follows the category tokens the cards already use. */
+.yl-pin-wrap {
+  background: none;
+  border: none;
+}
+.yl-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--color-surface);
+  background: var(--color-muted);
+  color: #fff;
+  font: 800 14px/1 var(--font-sans);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition:
+    transform 0.2s var(--ease-out-back),
+    box-shadow 0.2s ease;
+}
+.yl-pin--city {
+  width: 34px;
+  height: 34px;
+  background: var(--color-accent);
+}
+.yl-pin--stay {
+  background: var(--color-stay);
+}
+.yl-pin--attraction {
+  background: var(--color-attraction);
+}
+.yl-pin--meal {
+  background: var(--color-meal);
+}
+.yl-pin--transport {
+  background: var(--color-transport);
+}
+.yl-pin--airport {
+  background: var(--color-flight);
+}
+.yl-pin--on {
+  transform: scale(1.25);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--color-ink) 18%, transparent),
+    0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+/* Pin labels (permanent tooltips on the full-screen day map). */
+.yl-map .leaflet-tooltip.yl-tip {
+  max-width: 170px;
+  overflow: hidden;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 700 11.5px/1.3 var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+.yl-map .leaflet-tooltip.yl-tip::before {
+  display: none;
+}
+
+/* Route line between bases. Leaflet writes stroke colour as an SVG attribute,
+   which cannot read a CSS variable, so the themed colour comes from here. */
+.yl-route {
+  stroke: var(--color-accent);
+}
+
+/* OpenStreetMap only ships a light raster style, so re-tone the tiles for the
+   dark theme. Pins, route and controls are untouched — only the tile pane. */
+:root[data-theme="dark"] .yl-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.9)
+    saturate(0.5);
+}

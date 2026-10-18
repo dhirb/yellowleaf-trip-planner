@@ -1,6 +1,7 @@
 import type {
   ContactKind,
   DayTranslation,
+  GeoPoint,
   Item,
   ItemTranslation,
   Lang,
@@ -220,6 +221,66 @@ export function updateStay(
   if (!trip.stays[si]) return trip;
   const next = clone(trip);
   next.stays[si][field] = value;
+  return next;
+}
+
+/** Pin an activity on its day's map. */
+export function setItemLocation(
+  trip: Trip,
+  di: number,
+  ii: number,
+  location: GeoPoint,
+): Trip {
+  if (!trip.days[di]?.items[ii]) return trip;
+  const next = clone(trip);
+  next.days[di].items[ii] = { ...next.days[di].items[ii], location };
+  return next;
+}
+
+/** Take an activity off the map. Deletes the key — Firestore rejects undefined. */
+export function clearItemLocation(trip: Trip, di: number, ii: number): Trip {
+  if (!trip.days[di]?.items[ii]) return trip;
+  const next = clone(trip);
+  delete next.days[di].items[ii].location;
+  return next;
+}
+
+/**
+ * Pin a stay on the map: the city label and its coordinate land together, since
+ * a coordinate only ever comes from a geocoder result for that label.
+ */
+export function setStayPlace(
+  trip: Trip,
+  si: number,
+  city: string,
+  location: GeoPoint,
+): Trip {
+  if (!trip.stays[si]) return trip;
+  const next = clone(trip);
+  next.stays[si] = { ...next.stays[si], city, location };
+  return next;
+}
+
+/**
+ * Take a stay off the map, keeping its city label. The key is deleted rather
+ * than set to undefined because Firestore rejects undefined field values.
+ */
+export function clearStayLocation(trip: Trip, si: number): Trip {
+  if (!trip.stays[si]) return trip;
+  const next = clone(trip);
+  delete next.stays[si].location;
+  return next;
+}
+
+/**
+ * Retype the city label by hand. The pin goes with it: a coordinate only ever
+ * came from a geocoder result for the old label, so it cannot be trusted to
+ * describe the new one — the admin picks a suggestion to pin the stay again.
+ */
+export function setStayCity(trip: Trip, si: number, city: string): Trip {
+  if (!trip.stays[si]) return trip;
+  const next = clearStayLocation(trip, si);
+  next.stays[si].city = city;
   return next;
 }
 

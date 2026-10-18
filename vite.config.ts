@@ -122,6 +122,36 @@ export default defineConfig(({ command, mode }) => {
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
+            {
+              // The airport dataset (public/airports.json, ~300 KB) pins
+              // flights on the day map. Same-origin but not precached — most
+              // visits never need it — so keep whatever copy was fetched.
+              urlPattern: /\/airports\.json$/,
+              handler: "StaleWhileRevalidate",
+              options: { cacheName: "airports" },
+            },
+            {
+              // Map tiles (see src/components/traveler/PinMap.tsx). A tile for
+              // a given zoom/x/y never changes meaningfully within a trip, so
+              // cache-first keeps the maps usable offline once they have been
+              // viewed online. The entry cap keeps a wandering traveler from
+              // filling storage; OSM's usage policy also asks for no bulk
+              // downloads, which this never does — only viewed tiles are kept.
+              // Tiles are requested with `crossOrigin` (PinMap.tsx) so they
+              // cache as real 200s, not opaque responses — Chrome pads each
+              // opaque Cache Storage entry by ~7 MB for quota accounting.
+              urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "osm-tiles",
+                expiration: {
+                  maxEntries: 400,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                  purgeOnQuotaError: true,
+                },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
           ],
         },
         devOptions: { enabled: false },

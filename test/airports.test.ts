@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  airportIndex,
+  iataOf,
   parseAirports,
   formatAirport,
   searchAirports,
@@ -23,6 +25,32 @@ describe("parseAirports", () => {
       city: "Kuala Lumpur",
       country: "MY",
     });
+  });
+
+  it("carries coordinates when the row has them", () => {
+    const [kul] = parseAirports([
+      [
+        "KUL",
+        "Kuala Lumpur International Airport",
+        "Kuala Lumpur",
+        "MY",
+        2.7456,
+        101.7099,
+      ],
+    ]);
+    expect(kul).toMatchObject({ lat: 2.7456, lng: 101.7099 });
+  });
+
+  it("leaves coordinates off when they are missing or malformed", () => {
+    const rows = parseAirports([
+      ["AAA", "A", "A", "PF"],
+      ["BBB", "B", "B", "PF", NaN, 1],
+      ["CCC", "C", "C", "PF", 95, 1],
+    ]);
+    for (const a of rows) {
+      expect(a.lat).toBeUndefined();
+      expect(a.lng).toBeUndefined();
+    }
   });
 
   it("drops malformed rows", () => {
@@ -79,5 +107,29 @@ describe("searchAirports", () => {
 
   it("honours the result limit", () => {
     expect(searchAirports(fixture, "a", 2)).toHaveLength(2);
+  });
+});
+
+describe("iataOf", () => {
+  it("reads the code off a stored 'City (IATA)' label", () => {
+    expect(iataOf("Kuala Lumpur (KUL)")).toBe("KUL");
+    expect(iataOf("Guangzhou (can) ")).toBe("CAN");
+  });
+
+  it("accepts a bare code", () => {
+    expect(iataOf("muc")).toBe("MUC");
+  });
+
+  it("returns null for free text with no code", () => {
+    expect(iataOf("Munich Airport")).toBeNull();
+    expect(iataOf("")).toBeNull();
+  });
+});
+
+describe("airportIndex", () => {
+  it("keys airports by upper-case code", () => {
+    const index = airportIndex(fixture);
+    expect(index.get("KUL")?.city).toBe("Kuala Lumpur");
+    expect(index.get("kul")).toBeUndefined();
   });
 });
